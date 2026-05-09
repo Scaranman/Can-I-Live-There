@@ -1,0 +1,216 @@
+City-to-City Budget Comparison Tool — Low‑Fi Wireframes (MVP)
+Version: single comparison, multi-city, local-only, no login
+
+Legend
+------
+[ ] input field    ( ) radio     [v] dropdown     [+] add     [x] remove
+[Save local] action button       [Export JSON] downloads JSON      [Export CSV] downloads CSV      [Import] loads JSON
+
+
+========================================================================
+01) COMPARISON WORKSPACE (DEFAULT / ONE ACTIVE COMPARISON)
+========================================================================
+
+Header
+------
+City Budget Compare                                  [Export JSON] [Export CSV] [Import] [Reset]
+Subtext: Local-only. Your data stays in this browser/device.
+
+
+SECTION A — Cities (Google Places Autocomplete)
+----------------------------------------------
+Cities are displayed as columns. Add cities via Places search.
+
+Baseline City (Places)
+[ Search for a city... (Places autocomplete) __________________________ ]
+
+Add another city (Places)
+[ Search for a city... (Places autocomplete) __________________________ ]   [+ Add city]
+
+After adding, each city becomes a column below. Minimum 2 cities.
+
+
+SECTION B — City Columns (side-by-side)
+--------------------------------------
+Each city is a column. Rows align so users can compare quickly.
+
+Toolbar:
+[ Copy baseline income to all cities ]   Baseline: [v Chicago, IL]
+
+Columns (example with 3 cities)
+-------------------------------
+┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
+│ Chicago, IL   [Baseline]     │ San Francisco, CA [Set base] │ New York, NY      [Set base] │
+│ (place_id hidden)            │ (place_id hidden)            │ (place_id hidden)            │
+│ [Remove disabled if <2]      │ [Remove]                     │ [Remove]                     │
+├──────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ INCOME                        │ INCOME                        │ INCOME                        │
+│ Salary (annual) [__________] │ Salary (annual) [__________] │ Salary (annual) [__________] │
+│ Bonus (opt)    [__________]  │ Bonus (opt)    [__________]  │ Bonus (opt)    [__________]  │
+│ Other income   [__________]  │ Other income   [__________]  │ Other income   [__________]  │
+├──────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ HOUSING                       │ HOUSING                       │ HOUSING                       │
+│ ( ) Rent  $ [________] /mo   │ ( ) Rent  $ [________] /mo   │ ( ) Rent  $ [________] /mo   │
+│ ( ) Mortg $ [________] /mo   │ ( ) Mortg $ [________] /mo   │ ( ) Mortg $ [________] /mo   │
+│ Utilities $ [______]         │ Utilities $ [______]         │ Utilities $ [______]         │
+│ HOA       $ [______]         │ HOA       $ [______]         │ HOA       $ [______]         │
+│ Prop tax  $ [______]         │ Prop tax  $ [______]         │ Prop tax  $ [______]         │
+├──────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ OUTPUT PREVIEW                │ OUTPUT PREVIEW                │ OUTPUT PREVIEW                │
+│ Take-home/mo:  $ ________     │ Take-home/mo:  $ ________     │ Take-home/mo:  $ ________     │
+│ Expenses/mo:   $ ________     │ Expenses/mo:   $ ________     │ Expenses/mo:   $ ________     │
+│ Leftover/mo:   $ ________     │ Leftover/mo:   $ ________     │ Leftover/mo:   $ ________     │
+│ Annual save:   $ ________     │ Annual save:   $ ________     │ Annual save:   $ ________     │
+│ Δ vs base:     —             │ Δ vs base:     $ ________     │ Δ vs base:     $ ________     │
+└──────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
+
+SECTION C — Pre‑Tax Payroll Contributions (global)
+--------------------------------------------------
+Applies to tax calculation for each city. (Optional)
+Same for all cities: [✓]  (toggle; if off, show per-city fields inside each City Card)
+
+401(k)/403(b) contribution
+Type: ( ) Amount   ( ) Percent of salary
+If Amount:
+  Amount: [____________]   Period: [v Monthly | Annual]
+If Percent:
+  Percent: [ __.__ % ]  (applies to each city’s salary; varies by city if salaries differ)
+
+HSA contribution (optional)
+Amount: [____________]   Period: [v Monthly | Annual]
+
+FSA contribution (optional)
+Amount: [____________]   Period: [v Monthly | Annual]
+
+
+SECTION D — Tax Settings (global)
+---------------------------------
+Filing status:  ( ) Single   ( ) Married   ( ) Head of household
+
+
+SECTION E — Monthly Expenses (global, line-by-line)
+---------------------------------------------------
+Add recurring monthly expenses. (These are post-tax budget items.)
+
+Expense rows:
+┌───────────────────────────────┬───────────────────┬───────────┐
+│ Name                          │ Amount (Monthly)  │ Actions   │
+├───────────────────────────────┼───────────────────┼───────────┤
+│ [ Groceries ________________ ]│ [  ________ ]     │ [Delete]  │
+│ [ Student loan _____________ ]│ [  ________ ]     │ [Delete]  │
+│ [ _________________________ ]│ [  ________ ]     │ [Delete]  │
+└───────────────────────────────┴───────────────────┴───────────┘
+
+[+ Add expense line]
+
+Totals
+Total monthly expenses (line items): $ ________
+
+
+SECTION F — Calculate / Status
+------------------------------
+[ Calculate ]   Status: Idle | Calculating taxes... | Generating insights... | Updated just now
+
+Error states (inline banners):
+- Places error: “Couldn’t load city search suggestions. Check connection.”
+- Tax API error per-city: “Tax estimate unavailable for this city. [Retry]”
+- AI error: “Insights unavailable. Results still shown. [Retry]”
+
+
+========================================================================
+02) RESULTS DASHBOARD (SAME PAGE BELOW INPUTS OR A RESULTS TAB)
+========================================================================
+
+Top summary
+-----------
+Summary vs Baseline: Chicago, IL
+Best for leftover/month: ____________      Worst: ____________
+Best for annual savings: ____________      Worst: ____________
+
+Ranked comparison table (multi-city)
+------------------------------------
+┌─────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┐
+│ City                │ Take-home/mo  │ Expenses/mo  │ Leftover/mo  │ Δ Leftover   │
+├─────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ Chicago, IL (Base)  │ $ ________    │ $ ________    │ $ ________    │ —            │
+│ San Francisco, CA   │ $ ________    │ $ ________    │ $ ________    │ $ ________   │
+│ New York, NY        │ $ ________    │ $ ________    │ $ ________    │ $ ________   │
+└─────────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
+
+Details per city (cards)
+------------------------
+City: San Francisco, CA
+- Tax breakdown (from PayrollTaxAPI)
+  Federal:   $ ________
+  State:     $ ________
+  Local:     $ ________
+  FICA:      $ ________
+  Medicare:  $ ________
+  Effective rate: __.__%
+  Net pay (monthly): $ ________
+
+- Budget math
+  Net pay (monthly):          $ ________
+  Housing (monthly):          $ ________
+  Monthly expenses (line):    $ ________
+  Leftover (monthly):         $ ________
+  Est. annual savings:        $ ________
+
+
+Charts (low‑fi placeholders)
+----------------------------
+[Chart: Income vs Expenses by City]
+[Chart: Leftover / Savings by City]
+[Chart: Budget Breakdown (select city)]
+
+
+AI Insights panel
+-----------------
+AI Insights (based only on your inputs + calculated results)
+- Insight #1: _______________________________________________
+- Insight #2: _______________________________________________
+- Risk: _____________________________________________________
+- Opportunity: ______________________________________________
+
+
+========================================================================
+03) EXPORT / IMPORT / RESET (LOCAL-ONLY)
+========================================================================
+
+Export
+------
+Click [Export JSON] to download JSON of the one current comparison:
+- Selected cities + place_id metadata
+- Per-city income inputs
+- Per-city housing inputs
+- Global pre-tax contributions + filing status
+- Line-item monthly expenses
+- Optional: last computed results snapshot + timestamps
+
+Click [Export CSV] to download a flat file for Sheets/Excel:
+- One row per city
+- Includes: city name, baseline flag, income fields, housing fields, pre-tax settings, total monthly expenses,
+  and outputs (take-home/mo, expenses/mo, leftover/mo, annual savings, deltas vs baseline)
+
+Import
+------
+Click [Import] to load JSON and replace the current comparison.
+On success: show banner “Comparison imported. Recalculate to refresh taxes/insights.”
+
+Reset
+-----
+Click [Reset] → confirmation modal:
+Title: Reset comparison?
+Body: This clears the locally saved comparison on this device.
+Buttons: [Cancel] [Reset]
+
+
+========================================================================
+04) MOBILE (SINGLE COLUMN) NOTES (LOW‑FI)
+========================================================================
+- Header actions collapse into “More” menu: [⋯]
+- Cities section: stacked Places inputs, “Add another city” full-width button
+- City cards become accordions:
+  City name row + baseline badge + expand/collapse
+- Results: ranked list cards instead of table
+
