@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
+
+.rac-field {
+  @apply flex flex-col gap-1.5;
+}
+
+.rac-input {
+  @apply rounded-2xl border-2 border-ink bg-white px-3.5 py-2.5 text-sm shadow-cut outline-none transition;
+}
+
+.rac-input[data-focused] {
+  @apply ring-4 ring-pastel-lilac;
+}
+
+.rac-btn {
+  @apply inline-flex items-center justify-center rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold shadow-cut outline-none transition;
+}
+
+.rac-btn[data-focus-visible] {
+  @apply ring-4 ring-pastel-aqua;
+}
+
+.rac-btn-primary {
+  @apply bg-pastel-lilac text-ink;
+}
+
+.rac-btn-quiet {
+  @apply bg-white text-ink;
+}
+
+/* Major layout regions — spacing comes from the page flex gap; no panel chrome */
+.rac-section {
+  @apply block;
+}

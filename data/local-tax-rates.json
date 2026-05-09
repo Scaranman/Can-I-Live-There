@@ -1,0 +1,233 @@
+{
+  "version": 2,
+  "entries": [
+    {
+      "id": "new_york_ny_nyc_pit",
+      "locality": "New York",
+      "state": "NY",
+      "description": "NYC Personal Income Tax (lowest marginal bracket — graduated above this)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.03078,
+      "non_resident_rate": 0.03078,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["New York City", "NYC"],
+      "reference_url": "https://www.nyc.gov/site/finance/taxes/personal-income-tax.page",
+      "notes": "Population rank 1 (2024 est., city proper). NYC tax is graduated (3.078%–3.876%+ by bracket/filing status); 3.078% is the bottom statutory rate on taxable income. Non-residents pay on NYC-source income using bracketed rules — verify withholding."
+    },
+    {
+      "id": "los_angeles_ca",
+      "locality": "Los Angeles",
+      "state": "CA",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 2. California state income tax applies; LA does not levy a city income tax on wages."
+    },
+    {
+      "id": "chicago_il",
+      "locality": "Chicago",
+      "state": "IL",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 3. Illinois state income tax applies; Chicago does not levy a local earnings tax on individuals."
+    },
+    {
+      "id": "houston_tx",
+      "locality": "Houston",
+      "state": "TX",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 4. Texas has no state income tax; Houston does not levy a city income tax on wages."
+    },
+    {
+      "id": "phoenix_az",
+      "locality": "Phoenix",
+      "state": "AZ",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 5. Arizona state income tax applies; Phoenix does not levy a city income tax on wages."
+    },
+    {
+      "id": "philadelphia_pa_city_wage_tax",
+      "locality": "Philadelphia",
+      "state": "PA",
+      "description": "Philadelphia City Wage Tax (employee)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.038399,
+      "non_resident_rate": 0.034399,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Philadelphia", "Phila"],
+      "reference_url": "https://www.phila.gov/services/taxes-and-payments/wage-tax/",
+      "notes": "Population rank 6. Rates change periodically — confirm with the City of Philadelphia. Supplement = max(0, registry minus PayrollTaxAPI rows matching locality / substrings)."
+    },
+    {
+      "id": "san_antonio_tx",
+      "locality": "San Antonio",
+      "state": "TX",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 7. Texas has no state income tax; San Antonio does not levy a city income tax on wages."
+    },
+    {
+      "id": "san_diego_ca",
+      "locality": "San Diego",
+      "state": "CA",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 8. California state income tax applies; San Diego does not levy a city income tax on wages."
+    },
+    {
+      "id": "dallas_tx",
+      "locality": "Dallas",
+      "state": "TX",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 9. Texas has no state income tax; Dallas does not levy a city income tax on wages."
+    },
+    {
+      "id": "jacksonville_fl",
+      "locality": "Jacksonville",
+      "state": "FL",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 10. Florida has no state income tax; Jacksonville does not levy a city income tax on wages."
+    },
+    {
+      "id": "austin_tx",
+      "locality": "Austin",
+      "state": "TX",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 11. Texas has no state income tax; Austin does not levy a city income tax on wages."
+    },
+    {
+      "id": "fort_worth_tx",
+      "locality": "Fort Worth",
+      "state": "TX",
+      "description": "No municipal income/wage tax",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 12. Texas has no state income tax; Fort Worth does not levy a city income tax on wages."
+    },
+    {
+      "id": "san_jose_ca",
+      "locality": "San Jose",
+      "state": "CA",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 13. California state income tax applies; San Jose does not levy a traditional employee city income tax like Philly/NYC."
+    },
+    {
+      "id": "columbus_oh_municipal_income",
+      "locality": "Columbus",
+      "state": "OH",
+      "description": "Columbus municipal income tax (withholding)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.025,
+      "non_resident_rate": 0.025,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Columbus"],
+      "reference_url": "https://www.columbus.gov/government/city-auditor/Income-Tax-Division/",
+      "notes": "Population rank 14. City income tax is generally 2.5% on wages/business income allocated to Columbus (resident and workplace rules apply — confirm with City Auditor)."
+    },
+    {
+      "id": "charlotte_nc",
+      "locality": "Charlotte",
+      "state": "NC",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 15. North Carolina state income tax applies; Charlotte does not levy a city income tax on wages."
+    },
+    {
+      "id": "indianapolis_in_marion_loit",
+      "locality": "Indianapolis",
+      "state": "IN",
+      "description": "Marion County local income tax (LOIT) — county-level, applies to typical Indy resident/workplace withholding",
+      "basis": "taxable_wages",
+      "resident_rate": 0.0202,
+      "non_resident_rate": 0.0202,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Marion", "Indianapolis"],
+      "reference_url": "https://www.in.gov/dor/individual-income-taxes/indiana-county-income-tax/",
+      "notes": "Population rank 16. Rate is Marion County LOIT (approx. 2.02% for recent tax years — verify annual IN DOR tables). Allocation differs for non-residents; not a separate ‘Indianapolis-only’ city wage tax."
+    },
+    {
+      "id": "san_francisco_ca",
+      "locality": "San Francisco",
+      "state": "CA",
+      "description": "No traditional employee city income tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 17. California state income tax applies. SF imposes other business/payroll-related taxes (e.g. gross receipts / administrative rules) not modeled as a flat % wage withholding here."
+    },
+    {
+      "id": "seattle_wa",
+      "locality": "Seattle",
+      "state": "WA",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 18. Washington has no state income tax; Seattle does not levy a city income tax on wages (other local levies may apply separately)."
+    },
+    {
+      "id": "denver_co",
+      "locality": "Denver",
+      "state": "CO",
+      "description": "No percentage city income tax modeled",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 19. Colorado state income tax applies. Denver’s Occupational Privilege Tax is a small monthly flat amount per employee/employer — not represented as a wage percentage here."
+    },
+    {
+      "id": "oklahoma_city_ok",
+      "locality": "Oklahoma City",
+      "state": "OK",
+      "description": "No municipal income/wage tax (city proper)",
+      "basis": "taxable_wages",
+      "resident_rate": 0,
+      "non_resident_rate": 0,
+      "unknown_residence_default": "non_resident",
+      "notes": "Population rank 20. Oklahoma state income tax applies; Oklahoma City does not levy a city income tax on wages."
+    }
+  ]
+}
