@@ -1,18 +1,38 @@
 {
-  "version": 3,
+  "version": 4,
   "entries": [
     {
       "id": "new_york_ny_nyc_pit",
       "locality": "New York",
       "state": "NY",
-      "description": "NYC Personal Income Tax (lowest marginal bracket — graduated above this)",
+      "description": "NYC Personal Income Tax — marginal resident schedule on NYC taxable wages proxy",
       "basis": "taxable_wages",
       "resident_rate": 0.03078,
       "non_resident_rate": 0.03078,
       "unknown_residence_default": "non_resident",
+      "marginal_brackets_by_filing": {
+        "single": [
+          { "from": 0, "to": 12000, "rate": 0.03078 },
+          { "from": 12000, "to": 25000, "rate": 0.03762 },
+          { "from": 25000, "to": 50000, "rate": 0.03819 },
+          { "from": 50000, "to": null, "rate": 0.03876 }
+        ],
+        "married": [
+          { "from": 0, "to": 21600, "rate": 0.03078 },
+          { "from": 21600, "to": 45000, "rate": 0.03762 },
+          { "from": 45000, "to": 90000, "rate": 0.03819 },
+          { "from": 90000, "to": null, "rate": 0.03876 }
+        ],
+        "hoh": [
+          { "from": 0, "to": 14400, "rate": 0.03078 },
+          { "from": 14400, "to": 30000, "rate": 0.03762 },
+          { "from": 30000, "to": 60000, "rate": 0.03819 },
+          { "from": 60000, "to": null, "rate": 0.03876 }
+        ]
+      },
       "api_credit_substrings": ["New York City", "NYC"],
       "reference_url": "https://www.nyc.gov/site/finance/taxes/personal-income-tax.page",
-      "notes": "Population rank 1 (2024 est., city proper). NYC tax is graduated (3.078%–3.876%+ by bracket/filing status); 3.078% is the bottom statutory rate on taxable income. Non-residents pay on NYC-source income using bracketed rules — verify withholding."
+      "notes": "Population rank 1 (2024 est., city proper). Resident NYC PIT uses marginal slices by filing status on taxable wages proxy — thresholds/rates follow NYC Finance resident schedules; verify annually. Non-residents and unknown residence default use flat non_resident_rate (approximate); NYC-source nonresident rules differ."
     },
     {
       "id": "los_angeles_ca",

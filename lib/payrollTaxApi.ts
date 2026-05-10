@@ -40,7 +40,11 @@ export type PayrollTaxAnnualEstimate = {
 
 const BASE_URL = "https://payrolltaxapi.com";
 
-function marginalBracketTax(taxableAnnual: number, brackets: PayrollTaxLookupTax["brackets"]): number {
+/** Marginal income tax from ordered `from`/`to` slices (same shape as PayrollTaxAPI bracket rows). */
+export function marginalBracketTaxAnnual(
+  taxableAnnual: number,
+  brackets: PayrollTaxLookupTax["brackets"],
+): number {
   if (taxableAnnual <= 0 || !brackets?.length) return 0;
   let tax = 0;
   for (const br of brackets) {
@@ -186,7 +190,7 @@ export function annualEmployeeTaxesFromLookup(
 
     if (tax.category === "income" && code.startsWith("FED_")) {
       if (struct === "graduated" && tax.brackets?.length) {
-        annualFederalIncome += marginalBracketTax(taxable, tax.brackets);
+        annualFederalIncome += marginalBracketTaxAnnual(taxable, tax.brackets);
       }
       continue;
     }
@@ -194,7 +198,7 @@ export function annualEmployeeTaxesFromLookup(
     if (tax.category === "income" && !code.startsWith("FED_")) {
       let amt = 0;
       if (struct === "graduated" && tax.brackets?.length) {
-        amt = marginalBracketTax(taxable, tax.brackets);
+        amt = marginalBracketTaxAnnual(taxable, tax.brackets);
       } else if (struct === "flat_percent") {
         amt = flatOnBase(taxable, tax.rate, tax.wage_base ?? undefined);
       }
@@ -244,7 +248,7 @@ export function annualEmployeeIncomeTaxAmountForRow(
   const struct = tax.rate_structure;
 
   if (struct === "graduated" && tax.brackets?.length) {
-    return marginalBracketTax(taxable, tax.brackets);
+    return marginalBracketTaxAnnual(taxable, tax.brackets);
   }
   if (struct === "flat_percent") {
     return flatOnBase(taxable, tax.rate, tax.wage_base ?? undefined);

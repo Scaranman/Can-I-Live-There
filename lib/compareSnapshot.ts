@@ -231,6 +231,7 @@ export async function compareSnapshotOnServer(
           residenceLabel: city.residenceLabel,
           taxableAnnual: wagesForIncomeTax,
           grossAnnual,
+          filingStatus: snapshot.filingStatus,
           lookup: payrollDebug.lookupResponse,
         });
       }

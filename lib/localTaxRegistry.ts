@@ -5,12 +5,17 @@
 import rawRegistry from "@/data/local-tax-rates.json";
 import {
   apiIncomeTaxAnnualForWorkLocality,
+  marginalBracketTaxAnnual,
   type PayrollTaxAnnualEstimate,
   type PayrollTaxLookupResponse,
 } from "./payrollTaxApi";
+import type { FilingStatus } from "./types";
 import { guessLocalityFromLabel, guessStateFromLabel } from "./taxStub";
 
 export type LocalTaxBasis = "taxable_wages" | "gross_wages";
+
+/** Ordered marginal slices on registry basis (`from` inclusive floor per row; `to` null = no upper cap). */
+export type LocalTaxMarginalBracket = { from: number; to?: number | null; rate: number };
 
 export type LocalTaxRegistryEntry = {
   id: string;
@@ -21,6 +26,12 @@ export type LocalTaxRegistryEntry = {
   resident_rate: number;
   non_resident_rate: number;
   unknown_residence_default: "resident" | "non_resident";
+  /**
+   * When set for the user’s filing status and residence maps to resident, replace flat `resident_rate`
+   * with marginal integration over `basisAnnual`. Non-residents still use flat `non_resident_rate` unless
+   * `marginal_brackets_non_resident_by_filing` is added later.
+   */
+  marginal_brackets_by_filing?: Partial<Record<FilingStatus, LocalTaxMarginalBracket[]>>;
   api_credit_substrings?: string[];
   reference_url?: string;
   notes?: string;
@@ -56,6 +67,7 @@ export function applyLocalTaxRegistrySupplement(
     residenceLabel?: string;
     taxableAnnual: number;
     grossAnnual: number;
+    filingStatus: FilingStatus;
     lookup?: PayrollTaxLookupResponse;
   },
 ): PayrollTaxAnnualEstimate {
@@ -88,7 +100,16 @@ export function applyLocalTaxRegistrySupplement(
   }
 
   const rate = useResident ? entry.resident_rate : entry.non_resident_rate;
-  const registryAnnual = basisAnnual * rate;
+  const marginal =
+    useResident &&
+    entry.marginal_brackets_by_filing &&
+    entry.marginal_brackets_by_filing[params.filingStatus]?.length
+      ? entry.marginal_brackets_by_filing[params.filingStatus]
+      : undefined;
+  const registryAnnual =
+    marginal && marginal.length > 0
+      ? marginalBracketTaxAnnual(basisAnnual, marginal)
+      : basisAnnual * rate;
 
   const apiCredit = apiIncomeTaxAnnualForWorkLocality(
     params.lookup,
