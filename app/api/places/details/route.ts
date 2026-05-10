@@ -42,11 +42,15 @@ export async function GET(req: Request) {
   const admin = comps.find((c) => c.types.includes("administrative_area_level_1"))?.short_name;
   const label =
     locality && admin ? `${locality}, ${admin}` : data.result?.formatted_address ?? data.result?.name ?? "";
+  const countryShort = comps.find((c) => c.types.includes("country"))?.short_name;
+  const countryCode =
+    countryShort === "CA" || countryShort === "US" ? (countryShort as "CA" | "US") : undefined;
 
   return NextResponse.json({
     ok: true,
     label,
     formattedAddress: data.result?.formatted_address ?? "",
     placeId,
+    countryCode,
   });
 }

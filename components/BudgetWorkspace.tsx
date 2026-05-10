@@ -21,7 +21,11 @@ import {
   TextField,
 } from "react-aria-components";
 
+import { guessProvinceFromLabel } from "@/lib/canadaTax";
+import { workCountryToCurrency } from "@/lib/currencyConversion";
 import { computeComparison, deltasVsBaseline, deriveCityIncomeAndDeferrals } from "@/lib/compute";
+import { derivePayrollWorkCountry } from "@/lib/deriveWorkCountry";
+import { expenseEnteredSubtotals } from "@/lib/expenseTotals";
 import { defaultSnapshot, newCity, normalizeSnapshotBaseline } from "@/lib/defaultSnapshot";
 import {
   buildExportPayload,
@@ -30,7 +34,7 @@ import {
   summarizeForInsights,
 } from "@/lib/exportData";
 import { deterministicInsights } from "@/lib/insightsDeterministic";
-import { formatUsd, formatUsdSignedDelta, parseMoney } from "@/lib/money";
+import { formatMoney, formatMoneySignedDelta, parseMoney } from "@/lib/money";
 import { loadSnapshot, saveSnapshot, STORAGE_KEY } from "@/lib/storage";
 import type {
   CityInput,
@@ -38,6 +42,7 @@ import type {
   ComparisonSnapshot,
   ContributionPeriod,
   HousingMode,
+  MoneyCurrency,
 } from "@/lib/types";
 
 type PlacesPrediction = { description: string; place_id: string };
@@ -59,7 +64,7 @@ function isCityColumnEntered(city: CityInput, placesOk: boolean | null): boolean
   return city.placeId.trim().length > 0;
 }
 
-/** Blocks Calculate until each *opened* city column has location and income (unopened columns ignored). */
+/** Blocks Calculate until each entered city has location and income (cities you have not opened yet are ignored). */
 function collectCalculateErrors(snapshot: ComparisonSnapshot, placesOk: boolean | null): string[] {
   const errs: string[] = [];
   if (snapshot.cities.length === 0) {
@@ -69,7 +74,7 @@ function collectCalculateErrors(snapshot: ComparisonSnapshot, placesOk: boolean 
 
   const entered = snapshot.cities.filter((c) => isCityColumnEntered(c, placesOk));
   if (entered.length === 0) {
-    errs.push("Choose a work city for at least one column above, then complete income for open columns.");
+    errs.push("Choose a work city above for at least one city, then complete income for each city you've opened.");
     return errs;
   }
 
@@ -82,9 +87,22 @@ function collectCalculateErrors(snapshot: ComparisonSnapshot, placesOk: boolean 
     if (grossAnnual <= 0) {
       errs.push(`${col}: enter annual income (salary, bonus, or other) greater than $0.`);
     }
+    if (derivePayrollWorkCountry(city) === "CA" && !guessProvinceFromLabel(city.label)) {
+      errs.push(
+        `${col}: for Canada, include a province or territory in the work city (e.g. Toronto, ON or Calgary, Alberta).`,
+      );
+    }
   });
 
   return errs;
+}
+
+/** Each tax line as % of monthly gross (gross annual ÷ 12). */
+function pctOfMonthlyGross(monthlyTax: number, grossAnnual: number): string {
+  const grossMonthly = grossAnnual / 12;
+  if (!Number.isFinite(monthlyTax) || !Number.isFinite(grossAnnual) || grossMonthly <= 0) return "—";
+  const p = (monthlyTax / grossMonthly) * 100;
+  return Number.isFinite(p) ? `${p.toFixed(1)}%` : "—";
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -113,7 +131,7 @@ function PlacesField({
   cityId: string;
   draftLabel: string;
   setDraftLabel: (next: string) => void;
-  onResolvedCity: (placeId: string, label: string) => void;
+  onResolvedCity: (placeId: string, label: string, meta?: { countryCode?: "US" | "CA" }) => void;
   onPlacesAvailability: (ok: boolean | null) => void;
 }) {
   const debounced = useDebouncedValue(draftLabel, 250);
@@ -200,9 +218,15 @@ function PlacesField({
                       setDraftLabel(p.description);
                       setOpen(false);
                       const details = await fetch(`/api/places/details?placeId=${encodeURIComponent(p.place_id)}`);
-                      const payload = (await details.json()) as { ok?: boolean; label?: string };
+                      const payload = (await details.json()) as {
+                        ok?: boolean;
+                        label?: string;
+                        countryCode?: "US" | "CA";
+                      };
                       const label = payload.ok && payload.label ? payload.label : p.description;
-                      onResolvedCity(p.place_id, label);
+                      onResolvedCity(p.place_id, label, {
+                        countryCode: payload.ok ? payload.countryCode : undefined,
+                      });
                     }}
                   >
                     {p.description}
@@ -258,6 +282,49 @@ const periodItems: { id: ContributionPeriod; label: string }[] = [
   { id: "monthly", label: "Monthly" },
   { id: "annual", label: "Annual" },
 ];
+
+const expenseCurrencyItems: { id: MoneyCurrency; label: string }[] = [
+  { id: "USD", label: "USD" },
+  { id: "CAD", label: "CAD" },
+];
+
+function ExpenseCurrencySelect({
+  value,
+  onChange,
+}: {
+  value: MoneyCurrency;
+  onChange: (next: MoneyCurrency) => void;
+}) {
+  return (
+    <Select
+      selectedKey={value}
+      onSelectionChange={(key) => {
+        if (key === "USD" || key === "CAD") onChange(key);
+      }}
+      className="rac-field"
+    >
+      <Label className="text-xs font-semibold text-ink/70">Currency</Label>
+      <Button className="rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
+        <SelectValue />
+        <span aria-hidden className="text-xs text-ink/45">
+          ▾
+        </span>
+      </Button>
+      <Popover className="z-[100] min-w-[var(--trigger-width)] rounded-2xl border-2 border-ink bg-white p-1 shadow-cut outline-none">
+        <ListBox items={expenseCurrencyItems} className="max-h-60 overflow-auto p-0 outline-none">
+          {(item) => (
+            <ListBoxItem
+              id={item.id}
+              className="cursor-pointer rounded-xl px-3 py-2 text-sm outline-none data-[focused]:bg-pastel-yellow"
+            >
+              {item.label}
+            </ListBoxItem>
+          )}
+        </ListBox>
+      </Popover>
+    </Select>
+  );
+}
 
 function PeriodSelect({
   label,
@@ -351,7 +418,7 @@ function RadioChoiceRow({
   name: string;
   value: string;
   onChange: (next: string) => void;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; isDisabled?: boolean }[];
 }) {
   return (
     <RadioGroup
@@ -366,7 +433,8 @@ function RadioChoiceRow({
           <Radio
             key={o.value}
             value={o.value}
-            className="flex cursor-pointer items-center gap-2 text-sm text-ink outline-none data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-ink forced-color-adjust-none"
+            isDisabled={o.isDisabled}
+            className="flex cursor-pointer items-center gap-2 text-sm text-ink outline-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45 data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-ink forced-color-adjust-none"
           >
             {({ isSelected }) => (
               <>
@@ -446,6 +514,22 @@ export function BudgetWorkspace() {
     return [...computed.cities].sort((a, b) => b.leftoverMonthly - a.leftoverMonthly);
   }, [computed]);
 
+  const displayCurrency = useMemo((): MoneyCurrency => {
+    if (computed) return computed.reportingCurrency;
+    if (!baselineCity) return "USD";
+    return workCountryToCurrency(derivePayrollWorkCountry(baselineCity));
+  }, [computed, baselineCity]);
+
+  const hasCanadianPayrollCity = useMemo(
+    () => snapshot.cities.some((c) => derivePayrollWorkCountry(c) === "CA"),
+    [snapshot.cities],
+  );
+
+  useEffect(() => {
+    if (!hasCanadianPayrollCity || snapshot.filingStatus !== "hoh") return;
+    setSnapshot((s) => normalizeSnapshotBaseline({ ...s, filingStatus: "single" }));
+  }, [hasCanadianPayrollCity, snapshot.filingStatus]);
+
   const calculateErrors = useMemo(
     () => collectCalculateErrors(snapshot, placesOk),
     [snapshot, placesOk],
@@ -457,7 +541,7 @@ export function BudgetWorkspace() {
   }, [calculateBlocked]);
 
   function patchSnapshot(updater: (s: ComparisonSnapshot) => ComparisonSnapshot) {
-    setSnapshot((s) => updater(s));
+    setSnapshot((s) => normalizeSnapshotBaseline(updater(s)));
   }
 
   function updateCity(cityId: string, patch: Partial<ComparisonSnapshot["cities"][number]>) {
@@ -505,9 +589,11 @@ export function BudgetWorkspace() {
     } catch {
       nextComputed = computeComparison({
         cities: snapshot.cities,
+        baselineCityId: snapshot.baselineCityId,
         filingStatus: snapshot.filingStatus,
         pretax: snapshot.pretax,
         expenses: snapshot.expenses,
+        cadPerUsd: null,
       });
     }
     setComputed(nextComputed);
@@ -566,13 +652,7 @@ export function BudgetWorkspace() {
       .then((payload) => {
         const snap = payload.snapshot;
         if (!snap || snap.version !== 1 || !Array.isArray(snap.cities)) throw new Error("Invalid import");
-        const normalized = normalizeSnapshotBaseline({
-          ...snap,
-          cities: snap.cities.map((c) => ({
-            ...c,
-            residenceLabel: typeof c.residenceLabel === "string" ? c.residenceLabel : "",
-          })),
-        });
+        const normalized = normalizeSnapshotBaseline(snap);
         setSnapshot(normalized);
         setDrafts(Object.fromEntries(normalized.cities.map((c) => [c.id, c.label])));
         setComputed(null);
@@ -595,10 +675,6 @@ export function BudgetWorkspace() {
     setInsightsMode(null);
     setStatus("Reset");
   }
-
-  const maxAbsLeftover = computed
-    ? Math.max(1, ...computed.cities.map((c) => Math.abs(c.leftoverMonthly)))
-    : 1;
 
   return (
     <div className="flex flex-col gap-10">
@@ -673,7 +749,7 @@ export function BudgetWorkspace() {
           <div>
             <h2 className="font-marker text-3xl text-ink">Cities</h2>
             <p className="text-sm text-ink/65">
-              Pick each work city above. Income and housing appear below only for columns you&apos;ve set — baseline or
+              Pick each work city above. Income and housing appear below only for cities you&apos;ve set — baseline or
               comparison first is fine.
             </p>
           </div>
@@ -693,7 +769,7 @@ export function BudgetWorkspace() {
         {snapshot.cities.length === 0 ? (
           <p className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper2/80 px-4 py-6 text-center text-sm text-ink/70">
             No cities yet. Use <span className="font-semibold text-ink">+ Add city</span>, then set each work location
-            here or in the column cards below.
+            here or in the city cards below.
           </p>
         ) : placesOk === false ? (
           <div className="flex flex-col gap-1.5 rounded-2xl border-2 border-ink bg-white/70 p-4">
@@ -703,8 +779,8 @@ export function BudgetWorkspace() {
             <p className="text-xs text-ink/55">
               Google Places isn&apos;t reachable from this server (often missing{" "}
               <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">GOOGLE_MAPS_API_KEY</code>). Type
-              each city below — exports include whatever you enter. Use comma + state (e.g. Chicago, IL) so taxes can
-              detect your state.
+              each city below — exports include whatever you enter. Use comma + state for US cities (e.g. Chicago, IL)
+              or comma + province for Canada (e.g. Toronto, ON); payroll rules follow from that.
             </p>
             <div className="grid gap-3 md:grid-cols-2">
               {snapshot.cities.map((city, idx) => (
@@ -714,7 +790,7 @@ export function BudgetWorkspace() {
                   value={drafts[city.id] ?? ""}
                   onChange={(v) => {
                     setDrafts((d) => ({ ...d, [city.id]: v }));
-                    updateCity(city.id, { label: v, placeId: "" });
+                    updateCity(city.id, { label: v, placeId: "", placeCountryCode: undefined });
                   }}
                   aria-label={`City label for ${city.label || `city ${idx + 1}`}`}
                 >
@@ -722,7 +798,7 @@ export function BudgetWorkspace() {
                     {idx === 0 ? "Baseline city" : idx === 1 ? "Comparison city" : `City ${idx + 1}`}{" "}
                     <RequiredAsterisk />
                   </Label>
-                  <Input className="rac-input w-full" placeholder="e.g. Chicago, IL" />
+                  <Input className="rac-input w-full" placeholder="e.g. Chicago, IL or Toronto, ON" />
                 </TextField>
               ))}
             </div>
@@ -737,15 +813,19 @@ export function BudgetWorkspace() {
                   required
                   helper={
                     idx === 0
-                      ? "Sets default baseline · Label & place_id stored locally."
-                      : "Add until you’re happy — wireframes show multiple comparisons."
+                      ? "Your default city for comparisons — you can change the baseline anytime."
+                      : "Pick another work location to compare against your baseline."
                   }
                   cityId={city.id}
                   draftLabel={drafts[city.id] ?? ""}
                   setDraftLabel={(label) => setDrafts((d) => ({ ...d, [city.id]: label }))}
-                  onResolvedCity={(placeId, label) => {
+                  onResolvedCity={(placeId, label, meta) => {
                     setDrafts((d) => ({ ...d, [city.id]: label }));
-                    updateCity(city.id, { placeId, label });
+                    updateCity(city.id, {
+                      placeId,
+                      label,
+                      placeCountryCode: meta?.countryCode,
+                    });
                   }}
                   onPlacesAvailability={(ok) => setPlacesOk(ok)}
                 />
@@ -759,13 +839,17 @@ export function BudgetWorkspace() {
                     key={city.id}
                     title="Additional city"
                     required
-                    helper="Optional third+ metros for multi-offer comparisons."
+                    helper="Optional: add more cities to compare side by side."
                     cityId={city.id}
                     draftLabel={drafts[city.id] ?? ""}
                     setDraftLabel={(label) => setDrafts((d) => ({ ...d, [city.id]: label }))}
-                    onResolvedCity={(placeId, label) => {
+                    onResolvedCity={(placeId, label, meta) => {
                       setDrafts((d) => ({ ...d, [city.id]: label }));
-                      updateCity(city.id, { placeId, label });
+                      updateCity(city.id, {
+                        placeId,
+                        label,
+                        placeCountryCode: meta?.countryCode,
+                      });
                     }}
                     onPlacesAvailability={(ok) => setPlacesOk(ok)}
                   />
@@ -779,7 +863,7 @@ export function BudgetWorkspace() {
       <section className="rac-section space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {snapshot.cities.length === 0 ? (
-            <p className="text-sm text-ink/60">Add cities in the Cities section to compare columns.</p>
+            <p className="text-sm text-ink/60">Add cities in the Cities section to compare them.</p>
           ) : (
             <>
               <Button
@@ -799,7 +883,9 @@ export function BudgetWorkspace() {
                 Copy baseline income → all cities
               </Button>
 
-              {snapshot.cities.some((c) => isCityColumnEntered(c, placesOk)) ? (
+              {snapshot.cities.length >= 2 &&
+              isCityColumnEntered(snapshot.cities[0], placesOk) &&
+              isCityColumnEntered(snapshot.cities[1], placesOk) ? (
                 <BaselineCitySelect
                   cities={snapshot.cities}
                   selectedId={snapshot.baselineCityId}
@@ -813,8 +899,7 @@ export function BudgetWorkspace() {
         {snapshot.cities.length > 0 &&
         snapshot.cities.every((c) => !isCityColumnEntered(c, placesOk)) ? (
           <p className="rounded-2xl border-2 border-dashed border-ink/25 bg-paper2/80 px-4 py-4 text-center text-sm text-ink/70">
-            Choose a baseline or comparison work city above — income and housing columns open here after each city is
-            set.
+            Choose a baseline or comparison work city above — income and housing open here after each city is set.
           </p>
         ) : null}
 
@@ -824,6 +909,7 @@ export function BudgetWorkspace() {
             .map((city) => {
             const row = computed?.cities.find((r) => r.cityId === city.id);
             const d = delta?.[city.id];
+            const colCur = workCountryToCurrency(derivePayrollWorkCountry(city));
 
             return (
               <div
@@ -832,11 +918,12 @@ export function BudgetWorkspace() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-ink/50">City column</p>
                     <h3 className="text-lg font-semibold text-ink">{city.label || "Untitled city"}</h3>
-                    <p className="text-[11px] text-ink/45">{city.placeId ? `place_id: ${city.placeId}` : "place_id: —"}</p>
+                    <p className="text-[11px] text-ink/45">
+                      Payroll: {derivePayrollWorkCountry(city) === "CA" ? "Canada" : "United States"}
+                    </p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex shrink-0 flex-row flex-wrap items-center justify-end gap-2">
                     {city.id === snapshot.baselineCityId ? (
                       <span className="rounded-full bg-pastel-blue px-3 py-1 text-xs font-semibold text-ink">
                         Baseline
@@ -877,13 +964,24 @@ export function BudgetWorkspace() {
                   className="rac-field"
                 >
                   <Label className="text-xs font-semibold text-ink/70">Residence for payroll (optional)</Label>
-                  <p className="text-[11px] text-ink/50">
-                    If different from the work location above, enter where you live (comma + state, e.g. Princeton,
-                    NJ). Used when your home state differs from your work city for tax estimates.
-                  </p>
+                  {derivePayrollWorkCountry(city) === "CA" ? (
+                    <p className="text-[11px] text-ink/50">
+                      Cross-province payroll is not modeled in this version; you can still note where you live for your
+                      own reference.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-ink/50">
+                      If different from the work location above, enter where you live (comma + state, e.g. Princeton,
+                      NJ). Used when your home state differs from your work city for US tax estimates.
+                    </p>
+                  )}
                   <Input
                     className="rac-input w-full"
-                    placeholder="Leave blank if same as work city — or e.g. Jersey City, NJ"
+                    placeholder={
+                      derivePayrollWorkCountry(city) === "CA"
+                        ? "Optional — e.g. Ottawa, ON"
+                        : "Leave blank if same as work city — or e.g. Jersey City, NJ"
+                    }
                   />
                 </TextField>
 
@@ -892,21 +990,25 @@ export function BudgetWorkspace() {
                     Income <RequiredAsterisk />
                   </p>
                   <p className="text-xs text-ink/55">
-                    Annual total (salary + bonus + other) must be greater than $0.
+                    Enter amounts in{" "}
+                    <span className="font-semibold text-ink">
+                      {derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"}
+                    </span>{" "}
+                    (this city&apos;s payroll country). Annual total must be greater than 0.
                   </p>
                   <FieldMoney
-                    label="Salary (annual)"
+                    label={`Salary (annual, ${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"})`}
                     required
                     value={city.income.salary}
                     onChange={(salary) => updateCity(city.id, { income: { ...city.income, salary } })}
                   />
                   <FieldMoney
-                    label="Bonus (optional)"
+                    label={`Bonus (optional, ${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"})`}
                     value={city.income.bonus}
                     onChange={(bonus) => updateCity(city.id, { income: { ...city.income, bonus } })}
                   />
                   <FieldMoney
-                    label="Other income"
+                    label={`Other income (${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"})`}
                     value={city.income.other}
                     onChange={(other) => updateCity(city.id, { income: { ...city.income, other } })}
                   />
@@ -929,22 +1031,22 @@ export function BudgetWorkspace() {
                   />
 
                   <FieldMoney
-                    label={city.housing.mode === "rent" ? "Monthly rent" : "Monthly mortgage"}
+                    label={`${city.housing.mode === "rent" ? "Monthly rent" : "Monthly mortgage"} (${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"}/mo)`}
                     value={city.housing.monthlyCore}
                     onChange={(monthlyCore) => updateCity(city.id, { housing: { ...city.housing, monthlyCore } })}
                   />
                   <FieldMoney
-                    label="Utilities"
+                    label={`Utilities (${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"}/mo)`}
                     value={city.housing.utilities}
                     onChange={(utilities) => updateCity(city.id, { housing: { ...city.housing, utilities } })}
                   />
                   <FieldMoney
-                    label="HOA"
+                    label={`HOA (${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"}/mo)`}
                     value={city.housing.hoa}
                     onChange={(hoa) => updateCity(city.id, { housing: { ...city.housing, hoa } })}
                   />
                   <FieldMoney
-                    label="Property tax"
+                    label={`Property tax (${derivePayrollWorkCountry(city) === "CA" ? "CAD" : "USD"}/mo)`}
                     value={city.housing.propTax}
                     onChange={(propTax) => updateCity(city.id, { housing: { ...city.housing, propTax } })}
                   />
@@ -955,24 +1057,34 @@ export function BudgetWorkspace() {
                   <div className="mt-3 space-y-1 text-sm text-ink/75">
                     <div className="flex justify-between gap-3">
                       <span>Take-home/mo</span>
-                      <span className="font-semibold text-ink">{row ? formatUsd(row.netMonthly) : "—"}</span>
+                      <span className="font-semibold text-ink">
+                        {row ? formatMoney(row.netMonthlyNative, colCur) : "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span>Expenses/mo</span>
-                      <span className="font-semibold text-ink">{row ? formatUsd(row.expenseMonthly) : "—"}</span>
+                      <span className="font-semibold text-ink">
+                        {row ? formatMoney(row.expenseMonthlyNative, colCur) : "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span>Leftover/mo</span>
-                      <span className="font-semibold text-ink">{row ? formatUsd(row.leftoverMonthly) : "—"}</span>
+                      <span className="font-semibold text-ink">
+                        {row ? formatMoney(row.leftoverMonthlyNative, colCur) : "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span>Annual save</span>
-                      <span className="font-semibold text-ink">{row ? formatUsd(row.annualSavingsProxy) : "—"}</span>
+                      <span className="font-semibold text-ink">
+                        {row ? formatMoney(row.annualSavingsProxyNative, colCur) : "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span>Δ leftover vs baseline</span>
                       <span className="font-semibold text-ink">
-                        {!row || !d ? "—" : formatUsdSignedDelta(d.leftoverMonthly)}
+                        {!row || !d || d.leftoverMonthly == null
+                          ? "—"
+                          : formatMoneySignedDelta(d.leftoverMonthly, colCur)}
                       </span>
                     </div>
                   </div>
@@ -988,13 +1100,19 @@ export function BudgetWorkspace() {
           <div>
             <h2 className="font-marker text-2xl text-ink">Pre-tax payroll contributions (global)</h2>
             <p className="mt-1 text-sm text-ink/65">
-              Same settings apply to every city’s tax math; percent-based 401(k) deferrals still vary when salaries
-              differ (salary + bonus only).
+              Same settings apply to every city&apos;s tax math. In the U.S. this is modeled as 401(k) or 403(b); in
+              Canada the same fields represent RRSP-style contributions. Percent-based deferrals still vary when salaries
+              differ (salary + bonus only). HSA and FSA amounts use{" "}
+              <span className="font-semibold text-ink">
+                {baselineCity ? workCountryToCurrency(derivePayrollWorkCountry(baselineCity)) : "USD"}
+              </span>{" "}
+              (baseline payroll country) and convert into each city&apos;s payroll currency when needed. For a fixed
+              retirement contribution, choose the amount currency beside the amount.
             </p>
           </div>
 
           <RadioChoiceRow
-            legend="401(k) / 403(b) contribution — type"
+            legend="401(k) / 403(b) / RRSP contribution — type"
             name="fourOhOneMode"
             value={snapshot.pretax.fourOhOne.mode}
             onChange={(mode) =>
@@ -1013,14 +1131,26 @@ export function BudgetWorkspace() {
           />
 
           {snapshot.pretax.fourOhOne.mode === "amount" ? (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-3">
               <FieldMoney
-                label="401(k) amount"
+                label="401(k) / RRSP amount"
                 value={snapshot.pretax.fourOhOne.amount}
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
                     ...s,
                     pretax: { ...s.pretax, fourOhOne: { ...s.pretax.fourOhOne, amount } },
+                  }))
+                }
+              />
+              <ExpenseCurrencySelect
+                value={snapshot.pretax.fourOhOne.amountCurrency}
+                onChange={(amountCurrency) =>
+                  patchSnapshot((s) => ({
+                    ...s,
+                    pretax: {
+                      ...s.pretax,
+                      fourOhOne: { ...s.pretax.fourOhOne, amountCurrency },
+                    },
                   }))
                 }
               />
@@ -1040,7 +1170,7 @@ export function BudgetWorkspace() {
             </div>
           ) : (
             <FieldMoney
-              label="401(k) percent"
+              label="401(k) / RRSP percent"
               inputClassName="w-[100px] shrink-0"
               value={snapshot.pretax.fourOhOne.percent}
               onChange={(percent) =>
@@ -1056,7 +1186,7 @@ export function BudgetWorkspace() {
             <div className="space-y-3 rounded-2xl border-2 border-ink bg-pastel-aqua/40 p-4">
               <p className="text-sm font-semibold text-ink">HSA contribution (optional)</p>
               <FieldMoney
-                label="Amount"
+                label={`Amount (${displayCurrency})`}
                 value={snapshot.pretax.hsa.amount}
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
@@ -1080,7 +1210,7 @@ export function BudgetWorkspace() {
             <div className="space-y-3 rounded-2xl border-2 border-ink bg-pastel-peach/60 p-4">
               <p className="text-sm font-semibold text-ink">FSA contribution (optional)</p>
               <FieldMoney
-                label="Amount"
+                label={`Amount (${displayCurrency})`}
                 value={snapshot.pretax.fsa.amount}
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
@@ -1121,24 +1251,30 @@ export function BudgetWorkspace() {
             options={[
               { value: "single", label: "Single" },
               { value: "married", label: "Married filing jointly" },
-              { value: "hoh", label: "Head of household" },
+              {
+                value: "hoh",
+                label: "Head of household (US Only)",
+                isDisabled: hasCanadianPayrollCity,
+              },
             ]}
           />
         </div>
       </section>
 
       <section className="rac-section space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="font-marker text-3xl text-ink">Monthly expenses</h2>
-            <p className="text-sm text-ink/65">Global line items · applied equally to every city column.</p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-3">
+            <div>
+              <h2 className="font-marker text-3xl text-ink">Monthly expenses</h2>
+              <p className="text-sm text-ink/65">Global line items · applied equally to every city.</p>
+            </div>
           </div>
           <Button
-            className="rac-btn bg-pastel-yellow"
+            className="rac-btn bg-pastel-yellow md:mt-2"
             onPress={() =>
               patchSnapshot((s) => ({
                 ...s,
-                expenses: [...s.expenses, { id: crypto.randomUUID(), name: "", amount: "" }],
+                expenses: [...s.expenses, { id: crypto.randomUUID(), name: "", amount: "", currency: "USD" }],
               }))
             }
           >
@@ -1148,7 +1284,7 @@ export function BudgetWorkspace() {
 
         <div className="divide-y divide-ink/15">
           {snapshot.expenses.map((row) => (
-            <div key={row.id} className="grid gap-3 py-4 md:grid-cols-[1fr_160px_auto] md:items-end">
+            <div key={row.id} className="grid gap-3 py-4 md:grid-cols-[1fr_140px_100px_auto] md:items-end">
               <TextField
                 className="rac-field"
                 value={row.name}
@@ -1164,12 +1300,22 @@ export function BudgetWorkspace() {
               </TextField>
 
               <FieldMoney
-                label="Amount (monthly)"
+                label={`Amount (${row.currency === "CAD" ? "CAD" : "USD"}/mo)`}
                 value={row.amount}
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
                     ...s,
                     expenses: s.expenses.map((e) => (e.id === row.id ? { ...e, amount } : e)),
+                  }))
+                }
+              />
+
+              <ExpenseCurrencySelect
+                value={row.currency === "CAD" ? "CAD" : "USD"}
+                onChange={(currency) =>
+                  patchSnapshot((s) => ({
+                    ...s,
+                    expenses: s.expenses.map((e) => (e.id === row.id ? { ...e, currency } : e)),
                   }))
                 }
               />
@@ -1191,9 +1337,21 @@ export function BudgetWorkspace() {
           ))}
         </div>
 
-        <div className="flex items-center justify-between border-t border-ink/20 pt-4 text-sm font-semibold text-ink">
-          <span>Total monthly expenses (line items)</span>
-          <span>{formatUsd(snapshot.expenses.reduce((sum, e) => sum + parseMoney(e.amount), 0))}</span>
+        <div className="flex flex-col gap-1 border-t border-ink/20 pt-4 text-sm font-semibold text-ink md:flex-row md:items-center md:justify-between">
+          <span>Entered monthly expenses (by line currency)</span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-right font-normal text-ink/80 md:font-semibold md:text-ink">
+            {(() => {
+              const { usd, cad } = expenseEnteredSubtotals(snapshot.expenses);
+              if (usd <= 0 && cad <= 0) return "—";
+              return (
+                <>
+                  {usd > 0 ? <span>{formatMoney(usd, "USD")} USD</span> : null}
+                  {usd > 0 && cad > 0 ? <span className="text-ink/50">·</span> : null}
+                  {cad > 0 ? <span>{formatMoney(cad, "CAD")} CAD</span> : null}
+                </>
+              );
+            })()}
+          </span>
         </div>
       </section>
 
@@ -1250,6 +1408,10 @@ export function BudgetWorkspace() {
             <p className="text-sm text-ink/65">
               Summary vs baseline{" "}
               <span className="font-semibold text-ink">{baselineCity?.label ?? "—"}</span>
+              {" · "}
+              The table and income vs spend charts use each city&apos;s payroll currency (USD or CAD). Best / worst
+              leftover uses {computed.reportingCurrency} with FX so mixed-country cities stay rankable; AI insights use
+              the same.
             </p>
           </header>
 
@@ -1272,7 +1434,7 @@ export function BudgetWorkspace() {
                   <th className="border-b-2 border-ink px-4 py-3">Take-home / mo</th>
                   <th className="border-b-2 border-ink px-4 py-3">Expenses / mo</th>
                   <th className="border-b-2 border-ink px-4 py-3">Leftover / mo</th>
-                  <th className="border-b-2 border-ink px-4 py-3">Δ leftover</th>
+                  <th className="border-b-2 border-ink px-4 py-3">Δ leftover (same currency)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1285,10 +1447,22 @@ export function BudgetWorkspace() {
                         {c.label}
                         {isBase ? <span className="ml-2 rounded-full bg-pastel-blue px-2 py-0.5 text-[11px]">Baseline</span> : null}
                       </td>
-                      <td className="border-b border-ink/10 px-4 py-3">{formatUsd(c.netMonthly)}</td>
-                      <td className="border-b border-ink/10 px-4 py-3">{formatUsd(c.expenseMonthly)}</td>
-                      <td className="border-b border-ink/10 px-4 py-3">{formatUsd(c.leftoverMonthly)}</td>
-                      <td className="border-b border-ink/10 px-4 py-3">{isBase ? "—" : dd ? formatUsdSignedDelta(dd.leftoverMonthly) : "—"}</td>
+                      <td className="border-b border-ink/10 px-4 py-3">
+                        {formatMoney(c.netMonthlyNative, workCountryToCurrency(c.workCountry))}
+                      </td>
+                      <td className="border-b border-ink/10 px-4 py-3">
+                        {formatMoney(c.expenseMonthlyNative, workCountryToCurrency(c.workCountry))}
+                      </td>
+                      <td className="border-b border-ink/10 px-4 py-3">
+                        {formatMoney(c.leftoverMonthlyNative, workCountryToCurrency(c.workCountry))}
+                      </td>
+                      <td className="border-b border-ink/10 px-4 py-3">
+                        {isBase
+                          ? "—"
+                          : dd && dd.leftoverMonthly != null
+                            ? formatMoneySignedDelta(dd.leftoverMonthly, workCountryToCurrency(c.workCountry))
+                            : "—"}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1296,85 +1470,122 @@ export function BudgetWorkspace() {
             </table>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            {computed.cities.map((c) => (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {computed.cities.map((c) => {
+              const colCur = workCountryToCurrency(c.workCountry);
+              const chartMax = Math.max(1, c.netMonthlyNative, c.housingMonthlyNative, c.expenseMonthlyNative);
+              return (
               <div key={`chart-${c.cityId}`} className="rounded-2xl border-[3px] border-ink bg-pastel-blue/35 p-4">
                 <p className="text-xs font-semibold text-ink/60">Income vs spend · {c.label}</p>
                 <div className="mt-4 space-y-3">
                   <div>
                     <div className="mb-1 flex justify-between text-xs font-semibold text-ink/70">
                       <span>Take-home</span>
-                      <span>{formatUsd(c.netMonthly)}</span>
+                      <span>{formatMoney(c.netMonthlyNative, colCur)}</span>
                     </div>
                     <div className="h-3 w-full rounded-full border border-ink bg-white">
                       <div
                         className="h-full rounded-full bg-pastel-lilac"
-                        style={{ width: `${Math.min(100, (Math.max(0, c.netMonthly) / maxAbsLeftover) * 60)}%` }}
+                        style={{ width: `${Math.min(100, (Math.max(0, c.netMonthlyNative) / chartMax) * 60)}%` }}
                       />
                     </div>
                   </div>
                   <div>
                     <div className="mb-1 flex justify-between text-xs font-semibold text-ink/70">
                       <span>Housing</span>
-                      <span>{formatUsd(c.housingMonthly)}</span>
+                      <span>{formatMoney(c.housingMonthlyNative, colCur)}</span>
                     </div>
                     <div className="h-3 w-full rounded-full border border-ink bg-white">
                       <div
                         className="h-full rounded-full bg-pastel-peach"
-                        style={{ width: `${Math.min(100, (Math.max(0, c.housingMonthly) / maxAbsLeftover) * 60)}%` }}
+                        style={{ width: `${Math.min(100, (Math.max(0, c.housingMonthlyNative) / chartMax) * 60)}%` }}
                       />
                     </div>
                   </div>
                   <div>
                     <div className="mb-1 flex justify-between text-xs font-semibold text-ink/70">
                       <span>Line expenses</span>
-                      <span>{formatUsd(c.expenseMonthly)}</span>
+                      <span>{formatMoney(c.expenseMonthlyNative, colCur)}</span>
                     </div>
                     <div className="h-3 w-full rounded-full border border-ink bg-white">
                       <div
                         className="h-full rounded-full bg-pastel-yellow"
-                        style={{ width: `${Math.min(100, (Math.max(0, c.expenseMonthly) / maxAbsLeftover) * 60)}%` }}
+                        style={{ width: `${Math.min(100, (Math.max(0, c.expenseMonthlyNative) / chartMax) * 60)}%` }}
                       />
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             {computed.cities.map((c) => (
               <div key={`tax-${c.cityId}`} className="rounded-2xl border-[3px] border-ink bg-white p-5 shadow-cut">
                 <p className="text-sm font-semibold text-ink">{c.label}</p>
-                <p className="text-xs text-ink/55">Withholding estimate (monthly)</p>
+                <p className="text-xs text-ink/55">
+                  Withholding estimate (monthly)
+                  {c.workCountry === "CA" ? " · Canada" : " · United States"}
+                  {" · "}
+                  Amounts in {workCountryToCurrency(c.workCountry)} (not converted). Matches take-home and housing in
+                  the summary table.
+                </p>
                 <dl className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between gap-3">
                     <dt>Federal</dt>
-                    <dd className="font-semibold">{formatUsd(c.tax.monthlyFederal)}</dd>
+                    <dd className="text-right font-semibold">
+                      {formatMoney(c.tax.monthlyFederal, workCountryToCurrency(c.workCountry))}{" "}
+                      <span className="font-normal text-ink/60">
+                        ({pctOfMonthlyGross(c.tax.monthlyFederal, c.grossAnnualNative)})
+                      </span>
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>State</dt>
-                    <dd className="font-semibold">{formatUsd(c.tax.monthlyState)}</dd>
+                    <dt>{c.workCountry === "CA" ? "Provincial" : "State"}</dt>
+                    <dd className="text-right font-semibold">
+                      {formatMoney(c.tax.monthlyState, workCountryToCurrency(c.workCountry))}{" "}
+                      <span className="font-normal text-ink/60">
+                        ({pctOfMonthlyGross(c.tax.monthlyState, c.grossAnnualNative)})
+                      </span>
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>Local</dt>
-                    <dd className="font-semibold">{formatUsd(c.tax.monthlyLocal)}</dd>
+                    <dt>{c.workCountry === "CA" ? "Local (e.g. QPIP)" : "Local"}</dt>
+                    <dd className="text-right font-semibold">
+                      {formatMoney(c.tax.monthlyLocal, workCountryToCurrency(c.workCountry))}{" "}
+                      <span className="font-normal text-ink/60">
+                        ({pctOfMonthlyGross(c.tax.monthlyLocal, c.grossAnnualNative)})
+                      </span>
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>FICA</dt>
-                    <dd className="font-semibold">{formatUsd(c.tax.monthlyFica)}</dd>
+                    <dt>{c.workCountry === "CA" ? "CPP / QPP" : "FICA"}</dt>
+                    <dd className="text-right font-semibold">
+                      {formatMoney(c.tax.monthlyFica, workCountryToCurrency(c.workCountry))}{" "}
+                      <span className="font-normal text-ink/60">
+                        ({pctOfMonthlyGross(c.tax.monthlyFica, c.grossAnnualNative)})
+                      </span>
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>Medicare</dt>
-                    <dd className="font-semibold">{formatUsd(c.tax.monthlyMedicare)}</dd>
+                    <dt>{c.workCountry === "CA" ? "EI" : "Medicare"}</dt>
+                    <dd className="text-right font-semibold">
+                      {formatMoney(c.tax.monthlyMedicare, workCountryToCurrency(c.workCountry))}{" "}
+                      <span className="font-normal text-ink/60">
+                        ({pctOfMonthlyGross(c.tax.monthlyMedicare, c.grossAnnualNative)})
+                      </span>
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3 border-t border-dashed border-ink/20 pt-2">
                     <dt>Effective rate</dt>
-                    <dd className="font-semibold">{(c.tax.effectiveRate * 100).toFixed(1)}%</dd>
+                    <dd className="text-right font-semibold">{(c.tax.effectiveRate * 100).toFixed(1)}% of gross</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>401(k) deferrals / yr</dt>
-                    <dd className="font-semibold">{formatUsd(c.deferralsAnnual401k)}</dd>
+                    <dt>401(k) / RRSP deferrals / yr</dt>
+                    <dd className="font-semibold">
+                      {formatMoney(c.deferralsAnnual401k, workCountryToCurrency(c.workCountry))}
+                    </dd>
                   </div>
                 </dl>
               </div>

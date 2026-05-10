@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     "You write ultra-short budget insights for a relocation calculator.",
     "Hard rules:",
     "- Only reference facts present in the JSON summary (city labels, dollar amounts, percentages).",
+    "- The summary includes reportingCurrency, expenseLineSummary, cadPerUsd, fxSource — use them when commenting on US vs Canada or currency conversion.",
     "- Never cite external stats, rents, or COL indexes.",
     "- 3–6 bullets, plain English, no markdown.",
     "",

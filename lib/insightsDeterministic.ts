@@ -1,19 +1,39 @@
 import type { ComparisonComputed } from "./types";
+import { formatMoney } from "./money";
 
 export function deterministicInsights(params: {
   baselineLabel: string;
   computed: ComparisonComputed;
 }): string[] {
   const { baselineLabel, computed } = params;
+  const cur = computed.reportingCurrency;
   const ranked = [...computed.cities].sort((a, b) => b.leftoverMonthly - a.leftoverMonthly);
   const best = ranked[0];
   const worst = ranked.at(-1);
 
   const bullets: string[] = [];
 
+  const hasUs = computed.cities.some((c) => c.workCountry === "US");
+  const hasCa = computed.cities.some((c) => c.workCountry === "CA");
+  const fxLabel =
+    computed.fxSource === "fallback"
+      ? "offline placeholder rate"
+      : computed.fxSource === "open_er_api"
+        ? "ExchangeRate-API (open feed)"
+        : "ExchangeRate-API";
+  if (hasUs && hasCa) {
+    bullets.push(
+      `US and Canadian columns are mixed — salary and housing use each country’s currency for payroll, then take-home and housing convert to ${cur} at about ${computed.cadPerUsd.toFixed(3)} CAD per USD (${fxLabel}).`,
+    );
+  } else {
+    bullets.push(
+      `Table amounts are in ${cur}. Expenses: ${computed.expenseLineSummary}. FX: 1 USD ≈ ${computed.cadPerUsd.toFixed(4)} CAD (${fxLabel}).`,
+    );
+  }
+
   if (best && worst && best.cityId !== worst.cityId) {
     bullets.push(
-      `Highest monthly leftover right now: ${best.label} (~$${Math.round(best.leftoverMonthly).toLocaleString()}). Lowest: ${worst.label} (~$${Math.round(worst.leftoverMonthly).toLocaleString()}), vs baseline “${baselineLabel}”.`,
+      `Highest monthly leftover right now: ${best.label} (~${formatMoney(Math.round(best.leftoverMonthly), cur)}). Lowest: ${worst.label} (~${formatMoney(Math.round(worst.leftoverMonthly), cur)}), vs baseline “${baselineLabel}”.`,
     );
   }
 
@@ -25,7 +45,7 @@ export function deterministicInsights(params: {
 
   if (housingSpread > 50) {
     bullets.push(
-      `Housing differs by about $${Math.round(housingSpread).toLocaleString()} / month across columns — that alone can reorder “best city” once taxes net out.`,
+      `Housing differs by about ${formatMoney(Math.round(housingSpread), cur)} / month across columns — that alone can reorder “best city” once taxes net out.`,
     );
   }
 

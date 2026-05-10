@@ -1,6 +1,7 @@
 import type { ComparisonComputed, ComparisonSnapshot } from "./types";
+import { workCountryToCurrency } from "./currencyConversion";
 import { deltasVsBaseline } from "./compute";
-import { formatUsd } from "./money";
+import { formatMoney } from "./money";
 
 export function buildExportPayload(snapshot: ComparisonSnapshot, computed: ComparisonComputed | null) {
   return {
@@ -40,19 +41,21 @@ export function exportCsv(snapshot: ComparisonSnapshot, computed: ComparisonComp
     "filing_status",
     "401k_mode",
     "401k_amount",
+    "401k_amount_currency",
     "401k_period",
     "401k_percent",
     "hsa_amount",
     "hsa_period",
     "fsa_amount",
     "fsa_period",
-    "expense_lines_monthly_total",
-    "take_home_monthly",
-    "expenses_monthly",
-    "leftover_monthly",
-    "annual_savings_proxy",
-    "delta_leftover_vs_baseline_monthly",
-    "delta_annual_savings_vs_baseline",
+    "payroll_currency",
+    "expense_lines_monthly_total_baseline_reporting",
+    "take_home_monthly_native",
+    "expenses_monthly_native",
+    "leftover_monthly_native",
+    "annual_savings_proxy_native",
+    "delta_leftover_vs_baseline_monthly_native",
+    "delta_annual_savings_vs_baseline_native",
     "effective_tax_rate",
   ];
 
@@ -75,19 +78,21 @@ export function exportCsv(snapshot: ComparisonSnapshot, computed: ComparisonComp
       snapshot.filingStatus,
       snapshot.pretax.fourOhOne.mode,
       snapshot.pretax.fourOhOne.amount,
+      snapshot.pretax.fourOhOne.amountCurrency,
       snapshot.pretax.fourOhOne.period,
       snapshot.pretax.fourOhOne.percent,
       snapshot.pretax.hsa.amount,
       snapshot.pretax.hsa.period,
       snapshot.pretax.fsa.amount,
       snapshot.pretax.fsa.period,
+      comp ? workCountryToCurrency(comp.workCountry) : "",
       computed ? String(computed.expenseMonthlyTotal) : "",
-      comp ? String(comp.netMonthly) : "",
-      comp ? String(comp.expenseMonthly) : "",
-      comp ? String(comp.leftoverMonthly) : "",
-      comp ? String(comp.annualSavingsProxy) : "",
-      d ? String(d.leftoverMonthly) : "",
-      d ? String(d.annualSavingsProxy) : "",
+      comp ? String(comp.netMonthlyNative) : "",
+      comp ? String(comp.expenseMonthlyNative) : "",
+      comp ? String(comp.leftoverMonthlyNative) : "",
+      comp ? String(comp.annualSavingsProxyNative) : "",
+      d && d.leftoverMonthly != null ? String(d.leftoverMonthly) : "",
+      d && d.annualSavingsProxy != null ? String(d.annualSavingsProxy) : "",
       comp ? String(comp.tax.effectiveRate) : "",
     ].map(csvEscape);
   });
@@ -111,21 +116,28 @@ export function summarizeForInsights(snapshot: ComparisonSnapshot, computed: Com
   const baseline = snapshot.cities.find((c) => c.id === snapshot.baselineCityId) ?? snapshot.cities[0];
   const baselineRow = computed.cities.find((c) => c.cityId === baseline?.id);
   const ranked = [...computed.cities].sort((a, b) => b.leftoverMonthly - a.leftoverMonthly);
+  const cur = computed.reportingCurrency;
   return {
     baselineLabel: baseline?.label ?? "Baseline",
     bestLeftover: ranked[0]?.label,
     worstLeftover: ranked.at(-1)?.label,
+    reportingCurrency: cur,
+    expenseLineSummary: computed.expenseLineSummary,
+    cadPerUsd: computed.cadPerUsd,
+    fxSource: computed.fxSource,
+    fxFetchedAt: computed.fxFetchedAt,
     rows: computed.cities.map((c) => ({
       city: c.label,
+      payrollCountry: c.workCountry,
       residenceLabel:
         snapshot.cities.find((x) => x.id === c.cityId)?.residenceLabel?.trim() || "",
-      leftoverMonthly: formatUsd(c.leftoverMonthly),
-      annualSavingsProxy: formatUsd(c.annualSavingsProxy),
-      netMonthly: formatUsd(c.netMonthly),
-      housingMonthly: formatUsd(c.housingMonthly),
-      expenseMonthly: formatUsd(c.expenseMonthly),
+      leftoverMonthly: formatMoney(c.leftoverMonthly, cur),
+      annualSavingsProxy: formatMoney(c.annualSavingsProxy, cur),
+      netMonthly: formatMoney(c.netMonthly, cur),
+      housingMonthly: formatMoney(c.housingMonthly, cur),
+      expenseMonthly: formatMoney(c.expenseMonthly, cur),
       effectiveTaxPct: `${(c.tax.effectiveRate * 100).toFixed(1)}%`,
     })),
-    baselineLeftover: baselineRow ? formatUsd(baselineRow.leftoverMonthly) : "",
+    baselineLeftover: baselineRow ? formatMoney(baselineRow.leftoverMonthly, cur) : "",
   };
 }

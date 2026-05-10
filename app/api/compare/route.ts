@@ -1,4 +1,6 @@
 import { compareSnapshotOnServer } from "@/lib/compareSnapshot";
+import { normalizeSnapshotBaseline } from "@/lib/defaultSnapshot";
+import { fetchUsdCadSnapshot } from "@/lib/exchangeRateApi";
 import type { ComparisonSnapshot } from "@/lib/types";
 import { NextResponse } from "next/server";
 
@@ -16,8 +18,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, detail: "invalid_snapshot" }, { status: 400 });
   }
 
+  const snapshot = normalizeSnapshotBaseline(body);
+
   try {
-    const { computed, taxSource, message, payrollTaxLookups } = await compareSnapshotOnServer(body);
+    const fx = await fetchUsdCadSnapshot();
+    const { computed, taxSource, message, payrollTaxLookups } = await compareSnapshotOnServer(snapshot, fx);
     return NextResponse.json({ ok: true, computed, taxSource, message, payrollTaxLookups });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "compare_failed";

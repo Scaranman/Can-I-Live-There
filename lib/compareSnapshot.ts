@@ -1,6 +1,7 @@
 import {
   buildComputedCity,
   deriveCityIncomeAndDeferrals,
+  type IncomeDeriveContext,
   type PayrollTaxEstimate,
 } from "./compute";
 import {
@@ -8,14 +9,23 @@ import {
   fetchPayrollTaxLookup,
   type PayrollTaxLookupResponse,
 } from "./payrollTaxApi";
+import { runCanataxPython } from "./canadaCanataxServer";
+import { estimateCanadaPayrollRough, guessProvinceFromLabel, mapCanataxToPayrollEstimate } from "./canadaTax";
 import { applyLocalTaxRegistrySupplement } from "./localTaxRegistry";
-import { parseMoney } from "./money";
+import { resolveCadPerUsd, workCountryToCurrency } from "./currencyConversion";
+import {
+  expenseLinesCurrencySummary,
+  sumExpensesConvertedTo,
+  sumExpensesInReportingCurrency,
+} from "./expenseTotals";
+import type { FxSnapshot } from "./exchangeRateApi";
 import { estimatePayrollTaxesAnnual, guessLocalityFromLabel, guessStateFromLabel } from "./taxStub";
+import { derivePayrollWorkCountry } from "./deriveWorkCountry";
 import type { ComparisonComputed, ComparisonSnapshot } from "./types";
 
-export type CompareTaxSource = "payrolltaxapi" | "partial" | "stub";
+export type CompareTaxSource = "payrolltaxapi" | "canatax" | "partial" | "stub";
 
-/** One row per city: PayrollTaxAPI payload when successful, or why it was skipped. */
+/** One row per city: PayrollTaxAPI or Canada bridge outcome. */
 export type PayrollTaxLookupDebugRow = {
   cityId: string;
   label: string;
@@ -24,7 +34,10 @@ export type PayrollTaxLookupDebugRow = {
     | "stub_no_api_key"
     | "stub_no_work_state"
     | "stub_zero_gross"
-    | "api_error";
+    | "api_error"
+    | "ca_canatax"
+    | "ca_demo"
+    | "ca_no_province";
   lookupResponse?: PayrollTaxLookupResponse;
   error?: string;
 };
@@ -45,26 +58,50 @@ function stubEstimate(params: {
   return estimatePayrollTaxesAnnual(params);
 }
 
-export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Promise<{
+export async function compareSnapshotOnServer(
+  snapshot: ComparisonSnapshot,
+  fx: FxSnapshot,
+): Promise<{
   computed: ComparisonComputed;
   taxSource: CompareTaxSource;
   message?: string;
   payrollTaxLookups: PayrollTaxLookupDebugRow[];
 }> {
   const apiKey = process.env.PAYROLL_TAX_API_KEY?.trim();
-  const expenseMonthlyTotal = snapshot.expenses.reduce((sum, row) => sum + parseMoney(row.amount), 0);
+  const baseline =
+    snapshot.cities.find((c) => c.id === snapshot.baselineCityId) ?? snapshot.cities[0];
+  const reportingCurrency: "USD" | "CAD" = baseline
+    ? workCountryToCurrency(derivePayrollWorkCountry(baseline))
+    : "USD";
+  const cadResolved = resolveCadPerUsd(fx.cadPerUsd);
+  const expenseLineSummary = expenseLinesCurrencySummary(snapshot.expenses);
+  const expenseMonthlyTotal = sumExpensesInReportingCurrency(
+    snapshot.expenses,
+    reportingCurrency,
+    cadResolved,
+  );
   const payDate = new Date().toISOString().slice(0, 10);
   const filing = filingStatusForApi(snapshot.filingStatus);
 
-  let apiRows = 0;
-  let stubRows = 0;
+  let usApiRows = 0;
+  let usStubRows = 0;
+  let caCanataxRows = 0;
+  let caStubRows = 0;
   const warnings: string[] = [];
 
   const pairs = await Promise.all(
     snapshot.cities.map(async (city) => {
+      const cityNative = workCountryToCurrency(derivePayrollWorkCountry(city));
+      const expenseMonthlyNative = sumExpensesConvertedTo(snapshot.expenses, cityNative, cadResolved);
+      const deriveCtx: IncomeDeriveContext = {
+        pretaxCurrency: reportingCurrency,
+        cityNative,
+        cadPerUsd: cadResolved,
+      };
       const { grossAnnual, deferrals401kAnnual, hsaAnnual, fsaAnnual } = deriveCityIncomeAndDeferrals(
         city,
         snapshot.pretax,
+        deriveCtx,
       );
       const pretaxTotal = Math.min(grossAnnual, deferrals401kAnnual + hsaAnnual + fsaAnnual);
       const wagesForIncomeTax = Math.max(0, grossAnnual - pretaxTotal);
@@ -75,7 +112,7 @@ export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Pro
         outcome: "stub_no_api_key",
       };
 
-      const fallback = () =>
+      const fallbackUs = () =>
         stubEstimate({
           grossAnnual,
           filingStatus: snapshot.filingStatus,
@@ -85,24 +122,64 @@ export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Pro
           cityLabel: city.label || "",
         });
 
+      const country = derivePayrollWorkCountry(city);
       let tax: PayrollTaxEstimate;
 
-      if (!apiKey) {
-        stubRows += 1;
+      if (country === "CA") {
+        const provinceGuess = guessProvinceFromLabel(city.label || "");
+        const province = provinceGuess ?? "ON";
+
+        if (grossAnnual <= 0) {
+          caStubRows += 1;
+          payrollDebug.outcome = "stub_zero_gross";
+          warnings.push("Canada payroll: gross wages are $0 — no withholding applied.");
+          tax = {
+            netAnnual: Math.max(0, grossAnnual - pretaxTotal),
+            monthlyFederal: 0,
+            monthlyState: 0,
+            monthlyLocal: 0,
+            monthlyFica: 0,
+            monthlyMedicare: 0,
+            effectiveRate: 0,
+          };
+        } else if (!provinceGuess) {
+          caStubRows += 1;
+          payrollDebug.outcome = "ca_no_province";
+          warnings.push(
+            `“${city.label || "City"}” has no Canadian province — demo Canada rates (ON-style) used. Add e.g. “Toronto, ON”.`,
+          );
+          tax = estimateCanadaPayrollRough(grossAnnual, pretaxTotal, province);
+        } else {
+          const caJson = await runCanataxPython(wagesForIncomeTax, province);
+          if (caJson) {
+            caCanataxRows += 1;
+            payrollDebug.outcome = "ca_canatax";
+            tax = mapCanataxToPayrollEstimate(caJson, { grossAnnual, pretaxTotal });
+          } else {
+            caStubRows += 1;
+            payrollDebug.outcome = "ca_demo";
+            warnings.push(
+              "Canada payroll: Python/canatax not available on this host — rough demo withholding used. Set CANATAX_PYTHON and install requirements.txt locally for canatax.",
+            );
+            tax = estimateCanadaPayrollRough(grossAnnual, pretaxTotal, province);
+          }
+        }
+      } else if (!apiKey) {
+        usStubRows += 1;
         payrollDebug.outcome = "stub_no_api_key";
-        tax = fallback();
+        tax = fallbackUs();
       } else {
         const st = guessStateFromLabel(city.label || "");
         if (!st) {
-          stubRows += 1;
+          usStubRows += 1;
           payrollDebug.outcome = "stub_no_work_state";
           warnings.push(`“${city.label || "City"}” has no state code — demo taxes used.`);
-          tax = fallback();
+          tax = fallbackUs();
         } else if (grossAnnual <= 0) {
-          stubRows += 1;
+          usStubRows += 1;
           payrollDebug.outcome = "stub_zero_gross";
           warnings.push("PayrollTaxAPI requires gross wages above $0 — demo taxes used when income is $0.");
-          tax = fallback();
+          tax = fallbackUs();
         } else {
           try {
             const residenceLabel = (city.residenceLabel ?? "").trim();
@@ -129,35 +206,39 @@ export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Pro
               workLocality,
               filingStatus: snapshot.filingStatus,
             });
-            apiRows += 1;
+            usApiRows += 1;
             payrollDebug.outcome = "api_success";
             payrollDebug.lookupResponse = lookup;
           } catch (e) {
-            stubRows += 1;
+            usStubRows += 1;
             payrollDebug.outcome = "api_error";
             payrollDebug.error = e instanceof Error ? e.message : String(e);
             warnings.push("PayrollTaxAPI request failed — demo taxes used.");
-            tax = fallback();
+            tax = fallbackUs();
           }
         }
       }
 
-      tax = applyLocalTaxRegistrySupplement(tax, {
-        workCityLabel: city.label || "",
-        residenceLabel: city.residenceLabel,
-        taxableAnnual: wagesForIncomeTax,
-        grossAnnual,
-        lookup: payrollDebug.lookupResponse,
-      });
+      if (country === "US") {
+        tax = applyLocalTaxRegistrySupplement(tax, {
+          workCityLabel: city.label || "",
+          residenceLabel: city.residenceLabel,
+          taxableAnnual: wagesForIncomeTax,
+          grossAnnual,
+          lookup: payrollDebug.lookupResponse,
+        });
+      }
 
       const built = buildComputedCity({
         city,
-        grossAnnual,
+        grossAnnualNative: grossAnnual,
         deferrals401kAnnual,
         hsaAnnual,
         fsaAnnual,
-        expenseMonthlyTotal,
+        expenseMonthlyReporting: expenseMonthlyTotal,
+        expenseMonthlyNative,
         tax,
+        fx: { reportingCurrency, cityNative, cadPerUsd: cadResolved },
       });
 
       return { built, payrollDebug };
@@ -167,8 +248,20 @@ export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Pro
   const cities = pairs.map((p) => p.built);
   const payrollTaxLookups = pairs.map((p) => p.payrollDebug);
 
-  const taxSource: CompareTaxSource =
-    !apiKey || apiRows === 0 ? "stub" : stubRows === 0 ? "payrolltaxapi" : "partial";
+  const n = snapshot.cities.length;
+  const totalStub = usStubRows + caStubRows;
+  const totalLive = usApiRows + caCanataxRows;
+
+  let taxSource: CompareTaxSource;
+  if (totalStub === n) {
+    taxSource = "stub";
+  } else if (totalStub === 0 && totalLive === n) {
+    if (usApiRows === n) taxSource = "payrolltaxapi";
+    else if (caCanataxRows === n) taxSource = "canatax";
+    else taxSource = "partial";
+  } else {
+    taxSource = "partial";
+  }
 
   const deduped = [...new Set(warnings)];
   const message = deduped.length ? deduped.join(" ") : undefined;
@@ -178,6 +271,11 @@ export async function compareSnapshotOnServer(snapshot: ComparisonSnapshot): Pro
       computedAt: new Date().toISOString(),
       expenseMonthlyTotal,
       cities,
+      reportingCurrency,
+      expenseLineSummary,
+      cadPerUsd: cadResolved,
+      fxSource: fx.source,
+      fxFetchedAt: fx.fetchedAt,
     },
     taxSource,
     message,
