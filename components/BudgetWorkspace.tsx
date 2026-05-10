@@ -966,20 +966,21 @@ export function BudgetWorkspace() {
                         Set baseline
                       </Button>
                     )}
-                    <Button
-                      className="rac-btn !rounded-full !px-3 !py-1 !text-xs bg-pastel-pink"
-                      isDisabled={snapshot.cities.length <= 2}
-                      onPress={() =>
-                        patchSnapshot((s) => {
-                          const remaining = s.cities.filter((c) => c.id !== city.id);
-                          const nextBaseline =
-                            s.baselineCityId === city.id ? remaining[0]?.id ?? s.baselineCityId : s.baselineCityId;
-                          return { ...s, cities: remaining, baselineCityId: nextBaseline };
-                        })
-                      }
-                    >
-                      Remove
-                    </Button>
+                    {city.id !== snapshot.baselineCityId && snapshot.cities.length > 2 ? (
+                      <Button
+                        className="rac-btn !rounded-full !px-3 !py-1 !text-xs bg-pastel-pink"
+                        onPress={() =>
+                          patchSnapshot((s) => {
+                            const remaining = s.cities.filter((c) => c.id !== city.id);
+                            const nextBaseline =
+                              s.baselineCityId === city.id ? remaining[0]?.id ?? s.baselineCityId : s.baselineCityId;
+                            return { ...s, cities: remaining, baselineCityId: nextBaseline };
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
