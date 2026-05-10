@@ -799,11 +799,13 @@ export function BudgetWorkspace() {
                 Copy baseline income → all cities
               </Button>
 
-              <BaselineCitySelect
-                cities={snapshot.cities}
-                selectedId={snapshot.baselineCityId}
-                onChange={(baselineCityId) => patchSnapshot((s) => ({ ...s, baselineCityId }))}
-              />
+              {snapshot.cities.some((c) => isCityColumnEntered(c, placesOk)) ? (
+                <BaselineCitySelect
+                  cities={snapshot.cities}
+                  selectedId={snapshot.baselineCityId}
+                  onChange={(baselineCityId) => patchSnapshot((s) => ({ ...s, baselineCityId }))}
+                />
+              ) : null}
             </>
           )}
         </div>
