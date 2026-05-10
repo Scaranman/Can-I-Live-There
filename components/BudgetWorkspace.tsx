@@ -26,6 +26,7 @@ import { workCountryToCurrency } from "@/lib/currencyConversion";
 import { computeComparison, deltasVsBaseline, deriveCityIncomeAndDeferrals } from "@/lib/compute";
 import { derivePayrollWorkCountry } from "@/lib/deriveWorkCountry";
 import { expenseEnteredSubtotals } from "@/lib/expenseTotals";
+import { isCityColumnEntered, filterEnteredCityInputs } from "@/lib/cityEntered";
 import { defaultSnapshot, newCity, normalizeSnapshotBaseline } from "@/lib/defaultSnapshot";
 import {
   buildExportPayload,
@@ -56,12 +57,6 @@ function RequiredAsterisk() {
       <span className="sr-only"> (required)</span>
     </>
   );
-}
-
-/** True once the user has set that row’s work city (Places pick or manual label). */
-function isCityColumnEntered(city: CityInput, placesOk: boolean | null): boolean {
-  if (placesOk === false) return city.label.trim().length > 0;
-  return city.placeId.trim().length > 0;
 }
 
 /** Blocks Calculate until each entered city has location and income (cities you have not opened yet are ignored). */
@@ -593,13 +588,18 @@ export function BudgetWorkspace() {
     setInsights([]);
     setInsightsError(null);
 
+    const calcSnapshot = normalizeSnapshotBaseline({
+      ...snapshot,
+      cities: filterEnteredCityInputs(snapshot.cities, placesOk),
+    });
+
     let nextComputed: ComparisonComputed;
 
     try {
       const res = await fetch("/api/compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(snapshot),
+        body: JSON.stringify(calcSnapshot),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -613,11 +613,11 @@ export function BudgetWorkspace() {
       }
     } catch {
       nextComputed = computeComparison({
-        cities: snapshot.cities,
-        baselineCityId: snapshot.baselineCityId,
-        filingStatus: snapshot.filingStatus,
-        pretax: snapshot.pretax,
-        expenses: snapshot.expenses,
+        cities: calcSnapshot.cities,
+        baselineCityId: calcSnapshot.baselineCityId,
+        filingStatus: calcSnapshot.filingStatus,
+        pretax: calcSnapshot.pretax,
+        expenses: calcSnapshot.expenses,
         cadPerUsd: null,
       });
     }

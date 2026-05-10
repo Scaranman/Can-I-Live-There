@@ -20,7 +20,9 @@ import {
 } from "./expenseTotals";
 import type { FxSnapshot } from "./exchangeRateApi";
 import { estimatePayrollTaxesAnnual, guessLocalityFromLabel, guessStateFromLabel } from "./taxStub";
+import { normalizeSnapshotBaseline } from "./defaultSnapshot";
 import { derivePayrollWorkCountry } from "./deriveWorkCountry";
+import { filterCitiesWithAnyLocation } from "./cityEntered";
 import type { ComparisonComputed, ComparisonSnapshot } from "./types";
 
 export type CompareTaxSource = "payrolltaxapi" | "canatax" | "partial" | "stub";
@@ -67,6 +69,10 @@ export async function compareSnapshotOnServer(
   message?: string;
   payrollTaxLookups: PayrollTaxLookupDebugRow[];
 }> {
+  snapshot = normalizeSnapshotBaseline({
+    ...snapshot,
+    cities: filterCitiesWithAnyLocation(snapshot.cities),
+  });
   const apiKey = process.env.PAYROLL_TAX_API_KEY?.trim();
   const baseline =
     snapshot.cities.find((c) => c.id === snapshot.baselineCityId) ?? snapshot.cities[0];
