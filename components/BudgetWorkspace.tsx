@@ -779,7 +779,7 @@ export function BudgetWorkspace() {
             </p>
           </div>
           <Button
-            className="rac-btn bg-pastel-blue"
+            className="rac-btn bg-pastel-yellow md:mt-2"
             onPress={() =>
               patchSnapshot((s) => ({
                 ...s,
@@ -1303,7 +1303,7 @@ export function BudgetWorkspace() {
               }))
             }
           >
-            + Add expense line
+            Add expense
           </Button>
         </div>
 
