@@ -779,7 +779,7 @@ export function BudgetWorkspace() {
             </p>
           </div>
           <Button
-            className="rac-btn bg-pastel-yellow md:mt-2"
+            className="rac-btn bg-pastel-yellow shrink-0 self-start whitespace-nowrap md:mt-2"
             onPress={() =>
               patchSnapshot((s) => ({
                 ...s,
@@ -886,7 +886,7 @@ export function BudgetWorkspace() {
       </section>
 
       <section className="rac-section space-y-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           {snapshot.cities.length === 0 ? (
             <p className="text-sm text-ink/60">Add cities in the Cities section to compare them.</p>
           ) : (
@@ -1296,7 +1296,7 @@ export function BudgetWorkspace() {
             </div>
           </div>
           <Button
-            className="rac-btn bg-pastel-yellow md:mt-2"
+            className="rac-btn bg-pastel-yellow shrink-0 self-start whitespace-nowrap md:mt-2"
             onPress={() =>
               patchSnapshot((s) => ({
                 ...s,
@@ -1304,7 +1304,7 @@ export function BudgetWorkspace() {
               }))
             }
           >
-            Add expense
+            + Add expense
           </Button>
         </div>
 
@@ -1530,7 +1530,7 @@ export function BudgetWorkspace() {
                   </div>
                   <div>
                     <div className="mb-1 flex justify-between text-xs font-semibold text-ink/70">
-                      <span>Line expenses</span>
+                      <span>Expenses</span>
                       <span>{formatMoney(c.expenseMonthlyNative, colCur)}</span>
                     </div>
                     <div className="h-3 w-full rounded-full border border-ink bg-white">
