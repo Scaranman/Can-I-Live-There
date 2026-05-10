@@ -43,8 +43,14 @@ export async function GET(req: Request) {
   const label =
     locality && admin ? `${locality}, ${admin}` : data.result?.formatted_address ?? data.result?.name ?? "";
   const countryShort = comps.find((c) => c.types.includes("country"))?.short_name;
-  const countryCode =
-    countryShort === "CA" || countryShort === "US" ? (countryShort as "CA" | "US") : undefined;
+  if (countryShort !== "CA" && countryShort !== "US") {
+    return NextResponse.json({
+      ok: false,
+      code: "unsupported_country",
+      detail: "Only United States and Canada are supported for city search.",
+    });
+  }
+  const countryCode = countryShort as "CA" | "US";
 
   return NextResponse.json({
     ok: true,

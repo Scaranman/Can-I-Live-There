@@ -138,6 +138,8 @@ function PlacesField({
   const [open, setOpen] = useState(false);
   const [ preds, setPreds ] = useState<PlacesPrediction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const availabilityRef = useRef(onPlacesAvailability);
   useEffect(() => {
     availabilityRef.current = onPlacesAvailability;
@@ -174,13 +176,14 @@ function PlacesField({
   }, [debounced]);
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div ref={rootRef} className="flex flex-col gap-1.5">
       <TextField
         className="rac-field"
         aria-label={title}
         value={draftLabel}
         onChange={(v) => {
           setDraftLabel(v);
+          setSelectionError(null);
           setOpen(true);
         }}
       >
@@ -196,8 +199,13 @@ function PlacesField({
         <p className="text-xs text-ink/60">{helper}</p>
         <Input
           onFocus={() => setOpen(true)}
+          onBlur={(e) => {
+            const next = e.relatedTarget as Node | null;
+            if (next && rootRef.current?.contains(next)) return;
+            setOpen(false);
+          }}
           className="rac-input w-full"
-          placeholder="Search for a city…"
+          placeholder="Search US or Canadian city…"
           autoComplete="off"
         />
       </TextField>
@@ -215,18 +223,30 @@ function PlacesField({
                     className="w-full rounded-xl px-3 py-2 text-left text-sm outline-none hover:bg-pastel-yellow data-[focus-visible]:ring-2 data-[focus-visible]:ring-pastel-lilac"
                     onMouseDown={(e) => e.preventDefault()}
                     onPress={async () => {
-                      setDraftLabel(p.description);
-                      setOpen(false);
+                      setSelectionError(null);
                       const details = await fetch(`/api/places/details?placeId=${encodeURIComponent(p.place_id)}`);
                       const payload = (await details.json()) as {
                         ok?: boolean;
+                        code?: string;
+                        detail?: string;
                         label?: string;
                         countryCode?: "US" | "CA";
                       };
-                      const label = payload.ok && payload.label ? payload.label : p.description;
-                      onResolvedCity(p.place_id, label, {
-                        countryCode: payload.ok ? payload.countryCode : undefined,
-                      });
+                      if (
+                        !payload.ok ||
+                        (payload.countryCode !== "US" && payload.countryCode !== "CA")
+                      ) {
+                        setSelectionError(
+                          payload.detail ??
+                            "Only United States and Canada are supported. Pick another city.",
+                        );
+                        setOpen(true);
+                        return;
+                      }
+                      setDraftLabel(p.description);
+                      setOpen(false);
+                      const label = payload.label ? payload.label : p.description;
+                      onResolvedCity(p.place_id, label, { countryCode: payload.countryCode });
                     }}
                   >
                     {p.description}
@@ -243,6 +263,11 @@ function PlacesField({
             </div>
           </div>
         </div>
+      ) : null}
+      {selectionError ? (
+        <p className="text-xs font-medium text-red-700" role="alert">
+          {selectionError}
+        </p>
       ) : null}
     </div>
   );
@@ -779,8 +804,8 @@ export function BudgetWorkspace() {
             <p className="text-xs text-ink/55">
               Google Places isn&apos;t reachable from this server (often missing{" "}
               <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">GOOGLE_MAPS_API_KEY</code>). Type
-              each city below — exports include whatever you enter. Use comma + state for US cities (e.g. Chicago, IL)
-              or comma + province for Canada (e.g. Toronto, ON); payroll rules follow from that.
+              each city below — United States and Canada only for this version. Use comma + state for US cities (e.g.
+              Chicago, IL) or comma + province for Canada (e.g. Toronto, ON); payroll rules follow from that.
             </p>
             <div className="grid gap-3 md:grid-cols-2">
               {snapshot.cities.map((city, idx) => (

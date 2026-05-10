@@ -20,6 +20,8 @@ export async function GET(req: Request) {
   const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
   url.searchParams.set("input", q);
   url.searchParams.set("types", "(cities)");
+  /** Restrict suggestions to the two payroll regions this app models. */
+  url.searchParams.set("components", "country:us|country:ca");
   url.searchParams.set("key", key);
 
   const res = await fetch(url.toString(), { cache: "no-store" });
