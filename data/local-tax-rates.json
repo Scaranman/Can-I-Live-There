@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "entries": [
     {
       "id": "new_york_ny_nyc_pit",
@@ -228,6 +228,136 @@
       "non_resident_rate": 0,
       "unknown_residence_default": "non_resident",
       "notes": "Population rank 20. Oklahoma state income tax applies; Oklahoma City does not levy a city income tax on wages."
+    },
+    {
+      "id": "detroit_mi_city_income",
+      "locality": "Detroit",
+      "state": "MI",
+      "description": "Detroit city income tax (withholding on compensation)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.024,
+      "non_resident_rate": 0.012,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Detroit"],
+      "reference_url": "https://www.michigan.gov/taxes/citytax/detroit",
+      "notes": "Population rank 26 (July 2024 est., city proper). Resident and nonresident statutory rates on city taxable income — brackets/credits can vary; confirm with City of Detroit / Treasury forms."
+    },
+    {
+      "id": "louisville_ky_occupational",
+      "locality": "Louisville",
+      "state": "KY",
+      "description": "Louisville Metro occupational license tax on compensation",
+      "basis": "gross_wages",
+      "resident_rate": 0.022,
+      "non_resident_rate": 0.0145,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Louisville", "Jefferson"],
+      "reference_url": "https://louisvilleky.gov/government/revenue-commission",
+      "notes": "Population rank 27. Applies to compensation for work in Louisville/Jefferson County Metro — verify resident vs nonresident withholding with Louisville Revenue Commission."
+    },
+    {
+      "id": "kansas_city_mo_earnings",
+      "locality": "Kansas City",
+      "state": "MO",
+      "description": "Kansas City earnings tax (employee)",
+      "basis": "gross_wages",
+      "resident_rate": 0.01,
+      "non_resident_rate": 0.01,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Kansas City"],
+      "reference_url": "https://www.kcmo.gov/finance/tax-information-and-forms",
+      "notes": "Population rank 38. 1% on earnings from work within Kansas City, Missouri — confirm residency allocation vs Kansas City, Kansas."
+    },
+    {
+      "id": "lexington_ky_occupational",
+      "locality": "Lexington",
+      "state": "KY",
+      "description": "Lexington-Fayette Urban County occupational license fee (payroll withholding)",
+      "basis": "gross_wages",
+      "resident_rate": 0.0225,
+      "non_resident_rate": 0.0225,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Lexington", "Fayette"],
+      "reference_url": "https://www.lexingtonky.gov/occupational-license-fees",
+      "notes": "Population rank 59. Flat fee on compensation for services performed in Fayette County — confirm annual LFUCG rate table."
+    },
+    {
+      "id": "cleveland_oh_municipal_income",
+      "locality": "Cleveland",
+      "state": "OH",
+      "description": "Cleveland municipal income tax (withholding)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.025,
+      "non_resident_rate": 0.025,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Cleveland"],
+      "reference_url": "https://www.clevelandohio.gov/city-hall/divisions-and-departments/income-tax-division",
+      "notes": "Population rank 53. General wage withholding rate — credits/reciprocity with other Ohio municipalities apply; confirm with City of Cleveland Income Tax Division."
+    },
+    {
+      "id": "cincinnati_oh_municipal_income",
+      "locality": "Cincinnati",
+      "state": "OH",
+      "description": "Cincinnati municipal income tax (withholding)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.018,
+      "non_resident_rate": 0.018,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Cincinnati"],
+      "reference_url": "https://www.cincinnati-oh.gov/tax/",
+      "notes": "Population rank 66. City earnings tax rate — verify current Regional Income Tax Agency / City of Cincinnati tables."
+    },
+    {
+      "id": "toledo_oh_municipal_income",
+      "locality": "Toledo",
+      "state": "OH",
+      "description": "Toledo municipal income tax (withholding)",
+      "basis": "taxable_wages",
+      "resident_rate": 0.025,
+      "non_resident_rate": 0.025,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Toledo"],
+      "reference_url": "https://toledo.oh.gov/services/income-tax/",
+      "notes": "Population rank 86. Common statutory municipal rate — credits with other Ohio Cities apply; confirm with City of Toledo Income Tax Division."
+    },
+    {
+      "id": "st_louis_mo_earnings",
+      "locality": "St. Louis",
+      "state": "MO",
+      "description": "St. Louis earnings tax (employee)",
+      "basis": "gross_wages",
+      "resident_rate": 0.01,
+      "non_resident_rate": 0.01,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["St. Louis", "Saint Louis"],
+      "reference_url": "https://www.stlouis-mo.gov/government/departments/comptroller/earnings-tax.cfm",
+      "notes": "Population rank 80. 1% on earnings from work within the City of St. Louis."
+    },
+    {
+      "id": "saint_louis_mo_earnings_alias",
+      "locality": "Saint Louis",
+      "state": "MO",
+      "description": "St. Louis earnings tax (employee) — label alias for Saint Louis",
+      "basis": "gross_wages",
+      "resident_rate": 0.01,
+      "non_resident_rate": 0.01,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Saint Louis", "St. Louis"],
+      "reference_url": "https://www.stlouis-mo.gov/government/departments/comptroller/earnings-tax.cfm",
+      "notes": "Same as st_louis_mo_earnings when the work city label uses “Saint Louis” before the comma."
+    },
+    {
+      "id": "fort_wayne_in_allen_loit",
+      "locality": "Fort Wayne",
+      "state": "IN",
+      "description": "Allen County Indiana Local Income Tax (LOIT) — county-level withholding tied to Fort Wayne workplaces",
+      "basis": "taxable_wages",
+      "resident_rate": 0.0159,
+      "non_resident_rate": 0.0159,
+      "unknown_residence_default": "non_resident",
+      "api_credit_substrings": ["Allen", "Fort Wayne"],
+      "reference_url": "https://www.in.gov/dor/individual-income-taxes/indiana-county-income-tax/",
+      "notes": "Population rank 83. Combined Allen County LOIT rate — Indiana DOR publishes annual county rates; verify current percentage."
     }
   ]
 }
