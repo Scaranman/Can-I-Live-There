@@ -1582,7 +1582,9 @@ export function BudgetWorkspace() {
                     <dd className="text-right font-semibold">{(c.tax.effectiveRate * 100).toFixed(1)}% of gross</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>401(k) / RRSP deferrals / yr</dt>
+                    <dt>
+                      {c.workCountry === "CA" ? "RRSP deferrals / yr" : "401(k) / 403(b) deferrals / yr"}
+                    </dt>
                     <dd className="font-semibold">
                       {formatMoney(c.deferralsAnnual401k, workCountryToCurrency(c.workCountry))}
                     </dd>
