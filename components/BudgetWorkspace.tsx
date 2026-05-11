@@ -436,6 +436,23 @@ const expenseCurrencyItems: { id: MoneyCurrency; label: string }[] = [
   { id: "CAD", label: "CAD" },
 ];
 
+function SelectDropdownChevron() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-[1.125rem] w-[1.125rem] shrink-0 text-black transition-transform duration-200 ease-out group-aria-[expanded=true]:rotate-180"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 function ExpenseCurrencySelect({
   value,
   onChange,
@@ -452,11 +469,9 @@ function ExpenseCurrencySelect({
       className="rac-field"
     >
       <Label className="text-xs font-semibold text-ink/70">Currency</Label>
-      <Button className="rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
+      <Button className="group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
         <SelectValue />
-        <span aria-hidden className="text-xs text-ink/45">
-          ▾
-        </span>
+        <SelectDropdownChevron />
       </Button>
       <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
         <ListBox items={expenseCurrencyItems} className="p-0 outline-none">
@@ -492,11 +507,9 @@ function PeriodSelect({
       className="rac-field"
     >
       <Label className="text-xs font-semibold text-ink/70">{label}</Label>
-      <Button className="rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
+      <Button className="group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
         <SelectValue />
-        <span aria-hidden className="text-xs text-ink/45">
-          ▾
-        </span>
+        <SelectDropdownChevron />
       </Button>
       <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
         <ListBox items={periodItems} className="p-0 outline-none">
@@ -532,11 +545,9 @@ function BaselineCitySelect({
       className="rac-field text-sm font-semibold text-ink"
     >
       <Label className="text-sm font-semibold text-ink">Baseline</Label>
-      <Button className="rac-input flex w-full cursor-default items-center justify-between gap-2 text-left font-semibold outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
+      <Button className="group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left font-semibold outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
         <SelectValue />
-        <span aria-hidden className="text-xs font-normal text-ink/45">
-          ▾
-        </span>
+        <SelectDropdownChevron />
       </Button>
       <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
         <ListBox items={cities} className="p-0 outline-none">
