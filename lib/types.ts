@@ -55,7 +55,12 @@ export interface PretaxInput {
     period: ContributionPeriod;
     percent: string;
   };
-  hsa: { amount: string; period: ContributionPeriod };
+  hsa: {
+    amount: string;
+    /** Currency the amount is entered in. */
+    amountCurrency: MoneyCurrency;
+    period: ContributionPeriod;
+  };
   fsa: { amount: string; period: ContributionPeriod };
 }
 

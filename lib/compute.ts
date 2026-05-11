@@ -70,7 +70,13 @@ export function deriveCityIncomeAndDeferrals(
       ctx && fourOhOneCurrency !== cityNative ? convertCurrency(raw, fourOhOneCurrency, cityNative, cad) : raw;
   }
 
-  const hsaAnnual = convBaseline(annualize(parseMoney(pretax.hsa.amount), pretax.hsa.period));
+  const hsaCurrency: MoneyCurrency =
+    pretax.hsa.amountCurrency === "CAD" || pretax.hsa.amountCurrency === "USD"
+      ? pretax.hsa.amountCurrency
+      : baselinePretax;
+  const hsaRaw = annualize(parseMoney(pretax.hsa.amount), pretax.hsa.period);
+  const hsaAnnual = ctx && hsaCurrency !== cityNative ? convertCurrency(hsaRaw, hsaCurrency, cityNative, cad) : hsaRaw;
+
   const fsaAnnual = convBaseline(annualize(parseMoney(pretax.fsa.amount), pretax.fsa.period));
 
   return { grossAnnual, deferrals401kAnnual, hsaAnnual, fsaAnnual };

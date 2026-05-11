@@ -25,6 +25,11 @@ function normalizePretax(raw: ComparisonSnapshot["pretax"] | undefined, baseline
   const fs = raw?.fsa;
   const amountCurrency: MoneyCurrency =
     f?.amountCurrency === "CAD" || f?.amountCurrency === "USD" ? f.amountCurrency : baselineMoneyCurrency;
+  const hsaAmountCurrency: MoneyCurrency =
+    (h as { amountCurrency?: string } | undefined)?.amountCurrency === "CAD" ||
+    (h as { amountCurrency?: string } | undefined)?.amountCurrency === "USD"
+      ? ((h as { amountCurrency?: string }).amountCurrency as MoneyCurrency)
+      : baselineMoneyCurrency;
   return {
     fourOhOne: {
       mode: f?.mode === "percent" ? "percent" : "amount",
@@ -35,6 +40,7 @@ function normalizePretax(raw: ComparisonSnapshot["pretax"] | undefined, baseline
     },
     hsa: {
       amount: typeof h?.amount === "string" ? h.amount : "",
+      amountCurrency: hsaAmountCurrency,
       period: h?.period === "annual" ? "annual" : "monthly",
     },
     fsa: {
@@ -122,7 +128,7 @@ export function defaultSnapshot(): ComparisonSnapshot {
         period: "monthly",
         percent: "",
       },
-      hsa: { amount: "", period: "monthly" },
+      hsa: { amount: "", amountCurrency: "USD", period: "monthly" },
       fsa: { amount: "", period: "monthly" },
     },
     expenses: [

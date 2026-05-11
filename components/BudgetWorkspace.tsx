@@ -207,15 +207,15 @@ function PlacesField({
 
       {open && draftLabel.trim().length >= 2 ? (
         <div className="relative">
-          <div className="absolute z-20 mt-2 w-full rounded-2xl border-2 border-ink bg-white p-2 shadow-cut">
-            <div className="max-h-56 overflow-auto">
+          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut">
+            <div>
               {loading ? (
                 <div className="px-3 py-2 text-sm text-ink/60">Searching…</div>
               ) : preds.length ? (
                 preds.map((p) => (
                   <Button
                     key={`${cityId}-${p.place_id}`}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm outline-none hover:bg-pastel-yellow data-[focus-visible]:ring-2 data-[focus-visible]:ring-pastel-lilac"
+                    className="w-full rounded-none px-3 py-2 text-left text-sm outline-none hover:bg-pastel-yellow data-[focus-visible]:ring-2 data-[focus-visible]:ring-pastel-lilac"
                     onMouseDown={(e) => e.preventDefault()}
                     onPress={async () => {
                       setSelectionError(null);
@@ -251,14 +251,142 @@ function PlacesField({
                 <div className="px-3 py-2 text-sm text-ink/60">No matches yet — keep typing.</div>
               )}
             </div>
-            <div className="flex justify-end gap-2 border-t border-ink/10 px-2 py-2">
-              <Button className="rac-btn rac-btn-quiet !rounded-xl !py-1.5 !text-xs" onPress={() => setOpen(false)}>
-                Close
-              </Button>
+          </div>
+        </div>
+      ) : null}
+      {selectionError ? (
+        <p className="text-xs font-medium text-red-700" role="alert">
+          {selectionError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ResidencePlacesField({
+  cityId,
+  value,
+  onChange,
+  onPlacesAvailability,
+}: {
+  cityId: string;
+  value: string;
+  onChange: (next: string) => void;
+  onPlacesAvailability: (ok: boolean | null) => void;
+}) {
+  const debounced = useDebouncedValue(value, 250);
+  const [open, setOpen] = useState(false);
+  const [preds, setPreds] = useState<PlacesPrediction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const availabilityRef = useRef(onPlacesAvailability);
+  useEffect(() => {
+    availabilityRef.current = onPlacesAvailability;
+  }, [onPlacesAvailability]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (debounced.trim().length < 2) {
+        setPreds([]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(debounced)}`);
+        const data = (await res.json()) as {
+          ok?: boolean;
+          code?: string;
+          predictions?: PlacesPrediction[];
+        };
+        if (!res.ok && data.code === "missing_key") availabilityRef.current(false);
+        if (res.ok) availabilityRef.current(true);
+        if (!cancelled) setPreds(data.predictions ?? []);
+      } catch {
+        if (!cancelled) setPreds([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [debounced]);
+
+  return (
+    <div ref={rootRef} className="flex flex-col gap-1.5">
+      <TextField
+        className="rac-field"
+        aria-label="Residence for payroll (optional)"
+        value={value}
+        onChange={(v) => {
+          onChange(v);
+          setSelectionError(null);
+          setOpen(true);
+        }}
+      >
+        <Label className="text-xs font-semibold text-ink/70">Residence for payroll (optional)</Label>
+        <Input
+          onFocus={() => setOpen(true)}
+          onBlur={(e) => {
+            const next = e.relatedTarget as Node | null;
+            if (next && rootRef.current?.contains(next)) return;
+            setOpen(false);
+          }}
+          className="rac-input w-full"
+          placeholder="Leave blank if same as work city — or search another city…"
+          autoComplete="off"
+        />
+      </TextField>
+
+      {open && value.trim().length >= 2 ? (
+        <div className="relative">
+          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut">
+            <div>
+              {loading ? (
+                <div className="px-3 py-2 text-sm text-ink/60">Searching…</div>
+              ) : preds.length ? (
+                preds.map((p) => (
+                  <Button
+                    key={`res-${cityId}-${p.place_id}`}
+                    className="w-full rounded-none px-3 py-2 text-left text-sm outline-none hover:bg-pastel-yellow data-[focus-visible]:ring-2 data-[focus-visible]:ring-pastel-lilac"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onPress={async () => {
+                      setSelectionError(null);
+                      const details = await fetch(`/api/places/details?placeId=${encodeURIComponent(p.place_id)}`);
+                      const payload = (await details.json()) as {
+                        ok?: boolean;
+                        code?: string;
+                        detail?: string;
+                        label?: string;
+                        countryCode?: "US" | "CA";
+                      };
+                      if (!payload.ok || (payload.countryCode !== "US" && payload.countryCode !== "CA")) {
+                        setSelectionError(
+                          payload.detail ??
+                            "Only United States and Canada are supported. Pick another city.",
+                        );
+                        setOpen(true);
+                        return;
+                      }
+                      const label = payload.label ? payload.label : p.description;
+                      onChange(label);
+                      setOpen(false);
+                    }}
+                  >
+                    {p.description}
+                  </Button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-ink/60">No matches yet — keep typing.</div>
+              )}
             </div>
           </div>
         </div>
       ) : null}
+
       {selectionError ? (
         <p className="text-xs font-medium text-red-700" role="alert">
           {selectionError}
@@ -330,12 +458,12 @@ function ExpenseCurrencySelect({
           ▾
         </span>
       </Button>
-      <Popover className="z-[100] min-w-[var(--trigger-width)] rounded-2xl border-2 border-ink bg-white p-1 shadow-cut outline-none">
-        <ListBox items={expenseCurrencyItems} className="max-h-60 overflow-auto p-0 outline-none">
+      <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
+        <ListBox items={expenseCurrencyItems} className="p-0 outline-none">
           {(item) => (
             <ListBoxItem
               id={item.id}
-              className="cursor-pointer rounded-xl px-3 py-2 text-sm outline-none data-[focused]:bg-pastel-yellow"
+              className="cursor-pointer rounded-none px-3 py-2 text-sm outline-none data-[focused]:bg-pastel-yellow"
             >
               {item.label}
             </ListBoxItem>
@@ -370,12 +498,12 @@ function PeriodSelect({
           ▾
         </span>
       </Button>
-      <Popover className="z-[100] min-w-[var(--trigger-width)] rounded-2xl border-2 border-ink bg-white p-1 shadow-cut outline-none">
-        <ListBox items={periodItems} className="max-h-60 overflow-auto p-0 outline-none">
+      <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
+        <ListBox items={periodItems} className="p-0 outline-none">
           {(item) => (
             <ListBoxItem
               id={item.id}
-              className="cursor-pointer rounded-xl px-3 py-2 text-sm outline-none data-[focused]:bg-pastel-yellow"
+              className="cursor-pointer rounded-none px-3 py-2 text-sm outline-none data-[focused]:bg-pastel-yellow"
             >
               {item.label}
             </ListBoxItem>
@@ -410,13 +538,13 @@ function BaselineCitySelect({
           ▾
         </span>
       </Button>
-      <Popover className="z-[100] min-w-[var(--trigger-width)] rounded-2xl border-2 border-ink bg-white p-1 shadow-cut outline-none">
-        <ListBox items={cities} className="max-h-60 overflow-auto p-0 outline-none">
+      <Popover className="z-[100] min-w-[var(--trigger-width)] overflow-hidden rounded-2xl border-2 border-ink bg-white p-0 shadow-cut outline-none">
+        <ListBox items={cities} className="p-0 outline-none">
           {(c) => (
             <ListBoxItem
               id={c.id}
               textValue={c.label || "Untitled city"}
-              className="cursor-pointer rounded-xl px-3 py-2 text-sm font-normal outline-none data-[focused]:bg-pastel-yellow"
+              className="cursor-pointer rounded-none px-3 py-2 text-sm font-normal outline-none data-[focused]:bg-pastel-yellow"
             >
               {c.label || "Untitled city"}
             </ListBoxItem>
@@ -1001,6 +1129,8 @@ export function BudgetWorkspace() {
                       NJ). Used when your home state differs from your work city for US tax estimates.
                     </p>
                   )}
+                </TextField>
+                {placesOk === false ? (
                   <Input
                     className="rac-input w-full"
                     placeholder={
@@ -1009,7 +1139,14 @@ export function BudgetWorkspace() {
                         : "Leave blank if same as work city — or e.g. Jersey City, NJ"
                     }
                   />
-                </TextField>
+                ) : (
+                  <ResidencePlacesField
+                    cityId={city.id}
+                    value={city.residenceLabel ?? ""}
+                    onChange={(residenceLabel) => updateCity(city.id, { residenceLabel })}
+                    onPlacesAvailability={(ok) => setPlacesOk(ok)}
+                  />
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <p className="text-xs font-semibold text-ink">
@@ -1212,12 +1349,21 @@ export function BudgetWorkspace() {
             <div className="space-y-3 rounded-2xl border-2 border-ink bg-pastel-aqua/40 p-4">
               <p className="text-sm font-semibold text-ink">HSA contribution (optional)</p>
               <FieldMoney
-                label={`Amount (${displayCurrency})`}
+                label={`Amount (${snapshot.pretax.hsa.amountCurrency})`}
                 value={snapshot.pretax.hsa.amount}
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
                     ...s,
                     pretax: { ...s.pretax, hsa: { ...s.pretax.hsa, amount } },
+                  }))
+                }
+              />
+              <ExpenseCurrencySelect
+                value={snapshot.pretax.hsa.amountCurrency}
+                onChange={(amountCurrency) =>
+                  patchSnapshot((s) => ({
+                    ...s,
+                    pretax: { ...s.pretax, hsa: { ...s.pretax.hsa, amountCurrency } },
                   }))
                 }
               />
