@@ -948,22 +948,47 @@ export function BudgetWorkspace() {
             </p>
             <div className="grid gap-3 md:grid-cols-2">
               {snapshot.cities.map((city, idx) => (
-                <TextField
+                <div
                   key={`manual-${city.id}`}
-                  className="rac-field"
-                  value={drafts[city.id] ?? ""}
-                  onChange={(v) => {
-                    setDrafts((d) => ({ ...d, [city.id]: v }));
-                    updateCity(city.id, { label: v, placeId: "", placeCountryCode: undefined });
-                  }}
-                  aria-label={`City label for ${city.label || `city ${idx + 1}`}`}
+                  className={`flex gap-2 ${idx >= 2 ? "items-end" : ""}`}
                 >
-                  <Label className="text-xs font-semibold text-ink/70">
-                    {idx === 0 ? "Baseline city" : idx === 1 ? "Comparison city" : `City ${idx + 1}`}{" "}
-                    <RequiredAsterisk />
-                  </Label>
-                  <Input className="rac-input w-full" placeholder="e.g. Chicago, IL or Toronto, ON" />
-                </TextField>
+                  <TextField
+                    className="rac-field min-w-0 flex-1"
+                    value={drafts[city.id] ?? ""}
+                    onChange={(v) => {
+                      setDrafts((d) => ({ ...d, [city.id]: v }));
+                      updateCity(city.id, { label: v, placeId: "", placeCountryCode: undefined });
+                    }}
+                    aria-label={`City label for ${city.label || `city ${idx + 1}`}`}
+                  >
+                    <Label className="text-xs font-semibold text-ink/70">
+                      {idx === 0 ? "Baseline city" : idx === 1 ? "Comparison city" : `City ${idx + 1}`}{" "}
+                      <RequiredAsterisk />
+                    </Label>
+                    <Input className="rac-input w-full" placeholder="e.g. Chicago, IL or Toronto, ON" />
+                  </TextField>
+                  {idx >= 2 && snapshot.cities.length > 2 ? (
+                    <Button
+                      className="rac-btn shrink-0 bg-pastel-pink !rounded-xl !px-3 !py-2 !text-xs whitespace-nowrap"
+                      onPress={() => {
+                        const id = city.id;
+                        patchSnapshot((s) => {
+                          const remaining = s.cities.filter((c) => c.id !== id);
+                          const nextBaseline =
+                            s.baselineCityId === id ? remaining[0]?.id ?? s.baselineCityId : s.baselineCityId;
+                          return { ...s, cities: remaining, baselineCityId: nextBaseline };
+                        });
+                        setDrafts((d) => {
+                          const next = { ...d };
+                          delete next[id];
+                          return next;
+                        });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
               ))}
             </div>
           </div>
@@ -999,24 +1024,44 @@ export function BudgetWorkspace() {
             {snapshot.cities.length > 2 ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 {snapshot.cities.slice(2).map((city) => (
-                  <PlacesField
-                    key={city.id}
-                    title="Additional city"
-                    required
-                    helper="Optional: add more cities to compare side by side."
-                    cityId={city.id}
-                    draftLabel={drafts[city.id] ?? ""}
-                    setDraftLabel={(label) => setDrafts((d) => ({ ...d, [city.id]: label }))}
-                    onResolvedCity={(placeId, label, meta) => {
-                      setDrafts((d) => ({ ...d, [city.id]: label }));
-                      updateCity(city.id, {
-                        placeId,
-                        label,
-                        placeCountryCode: meta?.countryCode,
-                      });
-                    }}
-                    onPlacesAvailability={(ok) => setPlacesOk(ok)}
-                  />
+                  <div key={city.id} className="grid gap-2 md:grid-cols-[1fr_auto] md:items-end">
+                    <PlacesField
+                      title="Additional city"
+                      required={false}
+                      helper="Optional: add more cities to compare side by side. Remove if you added one by mistake."
+                      cityId={city.id}
+                      draftLabel={drafts[city.id] ?? ""}
+                      setDraftLabel={(label) => setDrafts((d) => ({ ...d, [city.id]: label }))}
+                      onResolvedCity={(placeId, label, meta) => {
+                        setDrafts((d) => ({ ...d, [city.id]: label }));
+                        updateCity(city.id, {
+                          placeId,
+                          label,
+                          placeCountryCode: meta?.countryCode,
+                        });
+                      }}
+                      onPlacesAvailability={(ok) => setPlacesOk(ok)}
+                    />
+                    <Button
+                      className="rac-btn shrink-0 bg-pastel-pink !rounded-xl !px-3 !py-2 !text-xs whitespace-nowrap md:mb-0.5"
+                      onPress={() => {
+                        const id = city.id;
+                        patchSnapshot((s) => {
+                          const remaining = s.cities.filter((c) => c.id !== id);
+                          const nextBaseline =
+                            s.baselineCityId === id ? remaining[0]?.id ?? s.baselineCityId : s.baselineCityId;
+                          return { ...s, cities: remaining, baselineCityId: nextBaseline };
+                        });
+                        setDrafts((d) => {
+                          const next = { ...d };
+                          delete next[id];
+                          return next;
+                        });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 ))}
               </div>
             ) : null}
