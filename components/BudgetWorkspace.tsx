@@ -1330,12 +1330,12 @@ export function BudgetWorkspace() {
             <p className="mt-1 text-sm text-ink/65">
               Same settings apply to every city&apos;s tax math. In the U.S. this is modeled as 401(k) or 403(b); in
               Canada the same fields represent RRSP-style contributions. Percent-based deferrals still vary when salaries
-              differ (salary + bonus only). HSA and FSA amounts use{" "}
+              differ (salary + bonus only). For fixed 401(k) / RRSP and HSA amounts, pick the currency next to the amount;
+              each city converts those figures into its payroll currency when needed. FSA amounts use{" "}
               <span className="font-semibold text-ink">
                 {baselineCity ? workCountryToCurrency(derivePayrollWorkCountry(baselineCity)) : "USD"}
               </span>{" "}
-              (baseline payroll country) and convert into each city&apos;s payroll currency when needed. For a fixed
-              retirement contribution, choose the amount currency beside the amount.
+              (baseline payroll country) and convert into each city&apos;s payroll currency when needed.
             </p>
           </div>
 
