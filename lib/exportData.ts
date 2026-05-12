@@ -21,81 +21,86 @@ export function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
-export function exportCsv(snapshot: ComparisonSnapshot, computed: ComparisonComputed | null) {
-  const baselineId = snapshot.baselineCityId;
-  const delta = computed ? deltasVsBaseline(baselineId, computed) : {};
+/** CSV of last Calculate output: one row per computed city (no raw form inputs). */
+export function exportResultsCsv(baselineCityId: string, computed: ComparisonComputed) {
+  const delta = deltasVsBaseline(baselineCityId, computed);
 
   const headers = [
     "city",
-    "baseline",
-    "place_id",
-    "salary_annual",
-    "bonus_annual",
-    "other_income_annual",
-    "housing_mode",
-    "housing_core_monthly",
-    "utilities_monthly",
-    "hoa_monthly",
-    "prop_tax_monthly",
-    "residence_label",
-    "filing_status",
-    "401k_mode",
-    "401k_amount",
-    "401k_amount_currency",
-    "401k_period",
-    "401k_percent",
-    "hsa_amount",
-    "hsa_amount_currency",
-    "hsa_period",
-    "fsa_amount",
-    "fsa_period",
+    "is_baseline",
+    "work_country",
     "payroll_currency",
-    "expense_lines_monthly_total_baseline_reporting",
+    "gross_annual_native",
+    "deferrals_401k_rrsp_annual_native",
+    "pretax_hsa_annual_native",
+    "pretax_fsa_annual_native",
+    "taxable_income_annual_approx_native",
+    "net_annual_after_payroll_taxes_native",
     "take_home_monthly_native",
+    "housing_monthly_native",
     "expenses_monthly_native",
     "leftover_monthly_native",
     "annual_savings_proxy_native",
-    "delta_leftover_vs_baseline_monthly_native",
-    "delta_annual_savings_vs_baseline_native",
-    "effective_tax_rate",
+    "tax_effective_rate",
+    "tax_monthly_federal_native",
+    "tax_monthly_state_or_province_native",
+    "tax_monthly_local_native",
+    "tax_monthly_fica_or_cpp_native",
+    "tax_monthly_medicare_or_ei_native",
+    "reporting_currency",
+    "take_home_monthly_reporting",
+    "housing_monthly_reporting",
+    "expenses_monthly_reporting",
+    "leftover_monthly_reporting",
+    "annual_savings_proxy_reporting",
+    "delta_leftover_monthly_native_vs_baseline",
+    "delta_annual_savings_native_vs_baseline",
+    "global_expenses_monthly_total_reporting",
+    "expense_line_summary",
+    "computed_at",
+    "fx_cad_per_usd",
+    "fx_source",
+    "fx_fetched_at",
   ];
 
-  const rows = snapshot.cities.map((c) => {
-    const comp = computed?.cities.find((x) => x.cityId === c.id);
-    const d = delta[c.id];
+  const rows = computed.cities.map((c) => {
+    const d = delta[c.cityId];
     return [
       c.label,
-      c.id === baselineId ? "yes" : "no",
-      c.placeId,
-      c.income.salary,
-      c.income.bonus,
-      c.income.other,
-      c.housing.mode,
-      c.housing.monthlyCore,
-      c.housing.utilities,
-      c.housing.hoa,
-      c.housing.propTax,
-      c.residenceLabel ?? "",
-      snapshot.filingStatus,
-      snapshot.pretax.fourOhOne.mode,
-      snapshot.pretax.fourOhOne.amount,
-      snapshot.pretax.fourOhOne.amountCurrency,
-      snapshot.pretax.fourOhOne.period,
-      snapshot.pretax.fourOhOne.percent,
-      snapshot.pretax.hsa.amount,
-      snapshot.pretax.hsa.amountCurrency,
-      snapshot.pretax.hsa.period,
-      snapshot.pretax.fsa.amount,
-      snapshot.pretax.fsa.period,
-      comp ? workCountryToCurrency(comp.workCountry) : "",
-      computed ? String(computed.expenseMonthlyTotal) : "",
-      comp ? String(comp.netMonthlyNative) : "",
-      comp ? String(comp.expenseMonthlyNative) : "",
-      comp ? String(comp.leftoverMonthlyNative) : "",
-      comp ? String(comp.annualSavingsProxyNative) : "",
+      c.cityId === baselineCityId ? "yes" : "no",
+      c.workCountry,
+      workCountryToCurrency(c.workCountry),
+      String(c.grossAnnualNative),
+      String(c.deferralsAnnual401k),
+      String(c.preTaxHsaAnnual),
+      String(c.preTaxFsaAnnual),
+      String(c.taxableAnnualApprox),
+      String(c.netAnnualAfterPayrollTaxes),
+      String(c.netMonthlyNative),
+      String(c.housingMonthlyNative),
+      String(c.expenseMonthlyNative),
+      String(c.leftoverMonthlyNative),
+      String(c.annualSavingsProxyNative),
+      String(c.tax.effectiveRate),
+      String(c.tax.monthlyFederal),
+      String(c.tax.monthlyState),
+      String(c.tax.monthlyLocal),
+      String(c.tax.monthlyFica),
+      String(c.tax.monthlyMedicare),
+      computed.reportingCurrency,
+      String(c.netMonthly),
+      String(c.housingMonthly),
+      String(c.expenseMonthly),
+      String(c.leftoverMonthly),
+      String(c.annualSavingsProxy),
       d && d.leftoverMonthly != null ? String(d.leftoverMonthly) : "",
       d && d.annualSavingsProxy != null ? String(d.annualSavingsProxy) : "",
-      comp ? String(comp.tax.effectiveRate) : "",
+      String(computed.expenseMonthlyTotal),
+      computed.expenseLineSummary,
+      computed.computedAt,
+      String(computed.cadPerUsd),
+      computed.fxSource,
+      computed.fxFetchedAt,
     ].map(csvEscape);
   });
 
@@ -104,7 +109,7 @@ export function exportCsv(snapshot: ComparisonSnapshot, computed: ComparisonComp
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `city-budget-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `city-budget-results-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

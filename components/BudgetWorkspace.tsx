@@ -31,7 +31,7 @@ import { defaultSnapshot, newCity, normalizeSnapshotBaseline } from "@/lib/defau
 import {
   buildExportPayload,
   downloadJson,
-  exportCsv,
+  exportResultsCsv,
   summarizeForInsights,
 } from "@/lib/exportData";
 import { deterministicInsights } from "@/lib/insightsDeterministic";
@@ -866,9 +866,6 @@ export function BudgetWorkspace() {
             <Button className="rac-btn bg-pastel-yellow" onPress={exportJsonClicked}>
               Export Data
             </Button>
-            <Button className="rac-btn bg-pastel-mint" onPress={() => exportCsv(snapshot, computed)}>
-              Export CSV
-            </Button>
             <FileTrigger
               acceptedFileTypes={["application/json", ".json"]}
               onSelect={(files) => {
@@ -1642,16 +1639,24 @@ export function BudgetWorkspace() {
           id="results-dashboard"
           className="rac-section scroll-mt-8 space-y-8"
         >
-          <header className="space-y-2">
-            <h2 className="font-marker text-4xl text-ink">Results dashboard</h2>
-            <p className="text-sm text-ink/65">
-              Summary vs baseline{" "}
-              <span className="font-semibold text-ink">{baselineCity?.label ?? "—"}</span>
-              {" · "}
-              The table and income vs spend charts use each city&apos;s payroll currency (USD or CAD). Best / worst
-              leftover uses {computed.reportingCurrency} with FX so mixed-country cities stay rankable; AI insights use
-              the same.
-            </p>
+          <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2">
+              <h2 className="font-marker text-4xl text-ink">Results dashboard</h2>
+              <p className="text-sm text-ink/65">
+                Summary vs baseline{" "}
+                <span className="font-semibold text-ink">{baselineCity?.label ?? "—"}</span>
+                {" · "}
+                The table and income vs spend charts use each city&apos;s payroll currency (USD or CAD). Best / worst
+                leftover uses {computed.reportingCurrency} with FX so mixed-country cities stay rankable; AI insights
+                use the same.
+              </p>
+            </div>
+            <Button
+              className="rac-btn bg-pastel-mint shrink-0 self-start md:mt-1"
+              onPress={() => exportResultsCsv(snapshot.baselineCityId, computed)}
+            >
+              Export Results
+            </Button>
           </header>
 
           <div className="grid gap-4 lg:grid-cols-2">
