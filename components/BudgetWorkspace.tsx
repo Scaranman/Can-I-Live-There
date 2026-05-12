@@ -1494,7 +1494,7 @@ export function BudgetWorkspace() {
           <div className="space-y-3">
             <div>
               <h2 className="font-marker text-3xl text-ink">Monthly expenses</h2>
-              <p className="text-sm text-ink/65">Global line items · applied equally to every city.</p>
+              <p className="text-sm text-ink/65">Global expenses · applied equally to every city.</p>
             </div>
           </div>
           <Button
@@ -1566,7 +1566,7 @@ export function BudgetWorkspace() {
         </div>
 
         <div className="flex flex-col gap-1 border-t border-ink/20 pt-4 text-sm font-semibold text-ink md:flex-row md:items-center md:justify-between">
-          <span>Entered monthly expenses (by line currency)</span>
+          <span>Entered monthly expenses (by currency)</span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-right font-normal text-ink/80 md:font-semibold md:text-ink">
             {(() => {
               const { usd, cad } = expenseEnteredSubtotals(snapshot.expenses);
