@@ -577,7 +577,13 @@ function RadioChoiceRow({
   name: string;
   value: string;
   onChange: (next: string) => void;
-  options: { value: string; label: string; isDisabled?: boolean }[];
+  options: {
+    value: string;
+    label: string;
+    isDisabled?: boolean;
+    /** Native tooltip when this option is disabled (e.g. hover on desktop). */
+    disabledTooltip?: string;
+  }[];
 }) {
   return (
     <RadioGroup
@@ -596,7 +602,10 @@ function RadioChoiceRow({
             className="flex cursor-pointer items-center gap-2 text-sm text-ink outline-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45 data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-ink forced-color-adjust-none"
           >
             {({ isSelected }) => (
-              <>
+              <span
+                className="flex items-center gap-2"
+                title={o.isDisabled && o.disabledTooltip ? o.disabledTooltip : undefined}
+              >
                 <span
                   aria-hidden
                   className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-white"
@@ -606,7 +615,7 @@ function RadioChoiceRow({
                   />
                 </span>
                 <span>{o.label}</span>
-              </>
+              </span>
             )}
           </Radio>
         ))}
@@ -1483,6 +1492,8 @@ export function BudgetWorkspace() {
                 value: "hoh",
                 label: "Head of household (US Only)",
                 isDisabled: hasCanadianPayrollCity,
+                disabledTooltip:
+                  "Head of household is a United States filing status. It is unavailable while any work city uses Canadian payroll.",
               },
             ]}
           />
