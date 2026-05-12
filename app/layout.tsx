@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Permanent_Marker } from "next/font/google";
+import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
 const marker = Permanent_Marker({
@@ -18,7 +19,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={marker.variable}>
-      <body className="min-h-dvh bg-paper text-ink">{children}</body>
+      <body className="flex min-h-dvh flex-col bg-paper text-ink">
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
+      </body>
     </html>
   );
 }
