@@ -889,9 +889,9 @@ export function BudgetWorkspace() {
           <div className="space-y-2">
             <h1 className="font-marker text-4xl tracking-wide text-ink">Can I Live There?</h1>
             <p className="max-w-xl text-sm text-ink/70">
-              Your budget lives only on this device: inputs and autosave sit in your browser&apos;s local storage, not in
-              a cloud account. Features like search or Calculate may call the server and APIs when you use them, but no
-              information persists there.
+              This tool is for US and Canadian cities only. Your budget lives only on this device: inputs and autosave sit
+              in your browser&apos;s local storage, not in a cloud account. Features like search or Calculate may call the
+              server and APIs when you use them, but no information persists there.
             </p>
           </div>
 
