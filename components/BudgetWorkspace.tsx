@@ -402,6 +402,8 @@ function FieldMoney({
   onChange,
   required,
   inputClassName = "w-full",
+  fieldClassName,
+  labelClassName,
 }: {
   label: string;
   value: string;
@@ -409,10 +411,24 @@ function FieldMoney({
   required?: boolean;
   /** Tailwind width utilities for the input only (label stays full width). */
   inputClassName?: string;
+  /** Extra classes on the TextField root (e.g. `md:contents` for expense grid rows). */
+  fieldClassName?: string;
+  /** Extra classes on the Label (e.g. grid column / row placement). */
+  labelClassName?: string;
 }) {
   return (
-    <TextField value={value} onChange={onChange} className="rac-field">
-      <Label className="text-xs font-semibold text-ink/70">
+    <TextField
+      value={value}
+      onChange={onChange}
+      className={fieldClassName ? `rac-field ${fieldClassName}` : "rac-field"}
+    >
+      <Label
+        className={
+          labelClassName
+            ? `text-xs font-semibold text-ink/70 ${labelClassName}`
+            : "text-xs font-semibold text-ink/70"
+        }
+      >
         {label}
         {required ? (
           <>
@@ -456,9 +472,12 @@ function SelectDropdownChevron() {
 function ExpenseCurrencySelect({
   value,
   onChange,
+  expenseGrid,
 }: {
   value: MoneyCurrency;
   onChange: (next: MoneyCurrency) => void;
+  /** When true, label row / control row align with expense line grid (md+). */
+  expenseGrid?: boolean;
 }) {
   return (
     <Select
@@ -466,10 +485,24 @@ function ExpenseCurrencySelect({
       onSelectionChange={(key) => {
         if (key === "USD" || key === "CAD") onChange(key);
       }}
-      className="rac-field"
+      className={expenseGrid ? "rac-field md:contents" : "rac-field"}
     >
-      <Label className="text-xs font-semibold text-ink/70">Currency</Label>
-      <Button className="group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac">
+      <Label
+        className={
+          expenseGrid
+            ? "text-xs font-semibold text-ink/70 md:col-start-3 md:row-start-1"
+            : "text-xs font-semibold text-ink/70"
+        }
+      >
+        Currency
+      </Label>
+      <Button
+        className={
+          expenseGrid
+            ? "group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac md:col-start-3 md:row-start-2"
+            : "group rac-input flex w-full cursor-default items-center justify-between gap-2 text-left outline-none data-[focus-visible]:ring-4 data-[focus-visible]:ring-pastel-lilac"
+        }
+      >
         <SelectValue />
         <SelectDropdownChevron />
       </Button>
@@ -1520,9 +1553,12 @@ export function BudgetWorkspace() {
 
         <div className="divide-y divide-ink/15">
           {snapshot.expenses.map((row) => (
-            <div key={row.id} className="grid gap-3 py-4 md:grid-cols-[1fr_140px_100px_auto] md:items-end">
+            <div
+              key={row.id}
+              className="grid gap-3 py-4 md:grid-cols-[1fr_140px_100px_auto] md:grid-rows-[auto_auto] md:gap-x-3 md:gap-y-1.5"
+            >
               <TextField
-                className="rac-field"
+                className="rac-field md:contents"
                 value={row.name}
                 onChange={(name) =>
                   patchSnapshot((s) => ({
@@ -1531,13 +1567,16 @@ export function BudgetWorkspace() {
                   }))
                 }
               >
-                <Label className="text-xs font-semibold text-ink/70">Name</Label>
-                <Input className="rac-input w-full" placeholder="Groceries…" />
+                <Label className="text-xs font-semibold text-ink/70 md:col-start-1 md:row-start-1">Name</Label>
+                <Input className="rac-input w-full md:col-start-1 md:row-start-2" placeholder="Groceries…" />
               </TextField>
 
               <FieldMoney
                 label={`Amount (${row.currency === "CAD" ? "CAD" : "USD"}/mo)`}
                 value={row.amount}
+                fieldClassName="md:contents"
+                labelClassName="md:col-start-2 md:row-start-1"
+                inputClassName="w-full md:col-start-2 md:row-start-2"
                 onChange={(amount) =>
                   patchSnapshot((s) => ({
                     ...s,
@@ -1547,6 +1586,7 @@ export function BudgetWorkspace() {
               />
 
               <ExpenseCurrencySelect
+                expenseGrid
                 value={row.currency === "CAD" ? "CAD" : "USD"}
                 onChange={(currency) =>
                   patchSnapshot((s) => ({
@@ -1556,7 +1596,7 @@ export function BudgetWorkspace() {
                 }
               />
 
-              <div className="flex items-end justify-end">
+              <div className="flex justify-end md:col-start-4 md:row-start-2 md:items-center">
                 <Button
                   className="rac-btn bg-pastel-pink !rounded-xl"
                   onPress={() =>
