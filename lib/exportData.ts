@@ -128,28 +128,37 @@ export function summarizeForInsights(snapshot: ComparisonSnapshot, computed: Com
   const expenseContext = buildExpenseInsightsContext(snapshot, computed);
   return {
     baselineLabel: baseline?.label ?? "Baseline",
-    bestLeftover: ranked[0]?.label,
-    worstLeftover: ranked.at(-1)?.label,
     reportingCurrency: cur,
-    expenseLineSummary: computed.expenseLineSummary,
-    cadPerUsd: computed.cadPerUsd,
-    fxSource: computed.fxSource,
-    fxFetchedAt: computed.fxFetchedAt,
-    /** Named monthly expense lines the user entered (not only the aggregate total). */
+    /** Named monthly expense lines — for personalized suggestions, not re-listing totals. */
     ...expenseContext,
-    rows: computed.cities.map((c) => ({
-      city: c.label,
-      payrollCountry: c.workCountry,
-      residenceLabel:
-        snapshot.cities.find((x) => x.id === c.cityId)?.residenceLabel?.trim() || "",
-      housingMode: snapshot.cities.find((x) => x.id === c.cityId)?.housing.mode ?? "rent",
-      leftoverMonthly: formatMoney(c.leftoverMonthly, cur),
-      annualSavingsProxy: formatMoney(c.annualSavingsProxy, cur),
-      netMonthly: formatMoney(c.netMonthly, cur),
-      housingMonthly: formatMoney(c.housingMonthly, cur),
-      expenseMonthly: formatMoney(c.expenseMonthly, cur),
-      effectiveTaxPct: `${(c.tax.effectiveRate * 100).toFixed(1)}%`,
-    })),
-    baselineLeftover: baselineRow ? formatMoney(baselineRow.leftoverMonthly, cur) : "",
+    /** Cities the model should discuss with qualitative COL color (beyond table numbers). */
+    cities: computed.cities.map((c) => {
+      const input = snapshot.cities.find((x) => x.id === c.cityId);
+      return {
+        label: c.label,
+        payrollCountry: c.workCountry,
+        residenceLabel: input?.residenceLabel?.trim() || "",
+        housingMode: input?.housing.mode ?? "rent",
+      };
+    }),
+    /**
+     * Compact computed context for grounding only. The model must not restate leftover /
+     * tax / housing rankings — the UI already shows them.
+     */
+    computedContextForGroundingOnly: {
+      bestLeftoverCity: ranked[0]?.label,
+      worstLeftoverCity: ranked.at(-1)?.label,
+      baselineLeftover: baselineRow ? formatMoney(baselineRow.leftoverMonthly, cur) : "",
+      rows: computed.cities.map((c) => ({
+        city: c.label,
+        leftoverMonthly: formatMoney(c.leftoverMonthly, cur),
+        netMonthly: formatMoney(c.netMonthly, cur),
+        housingMonthly: formatMoney(c.housingMonthly, cur),
+        expenseMonthly: formatMoney(c.expenseMonthly, cur),
+        effectiveTaxPct: `${(c.tax.effectiveRate * 100).toFixed(1)}%`,
+      })),
+      cadPerUsd: computed.cadPerUsd,
+      fxSource: computed.fxSource,
+    },
   };
 }

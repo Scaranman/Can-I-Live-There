@@ -19,19 +19,27 @@ export async function POST(req: Request) {
   }
 
   const prompt = [
-    "You write short, useful budget insights for a relocation calculator.",
-    "Hard rules:",
-    "- Only reference facts present in the JSON summary (city labels, dollar amounts, percentages, named expense lines, enteredColAspects, missingColAspects).",
-    "- Never invent city-specific rents, wages, or external COL indexes / statistics.",
-    "- Do not invent expense amounts the user did not enter.",
-    "- Plain English bullets, no markdown headings, no numbering schema beyond leading dashes.",
-    "- Return 5–8 bullets.",
+    "You write the AI Insights panel for a city-to-city relocation budget app (“Can I Live There?”).",
     "",
-    "Cover these themes (skip a theme only if the JSON has nothing useful for it):",
-    "1) Cross-city tradeoffs: leftover, housing, taxes, FX / reportingCurrency when relevant.",
-    "2) Line-item expenses: name the user’s largest expenseLines / topExpenseLines; say how expenseShareOfBaselineTakeHomePct or expenseMonthlyTotalReporting affects leftover. Give 1–2 concrete suggestions grounded only in those named lines (trim, combine, renegotiate, watch FX on CAD vs USD lines, etc.).",
-    "3) Other cost-of-living aspects: using missingColAspects (and noting that housing is already modeled per city), mention 2–4 living-cost categories the user has NOT entered that often change after relocating. Frame these as budget gaps to fill — not as claims about how expensive a city is.",
-    "4) Close with a caution that this is input-based only, not professional advice — unless a similar caution is already clear in an earlier bullet.",
+    "The results dashboard ALREADY shows take-home, housing, taxes, leftover, and deltas.",
+    "Do NOT restate which city has the highest/lowest leftover, tax %, or housing total.",
+    "Do NOT narrate FX rates or “table is in USD/CAD” unless essential to a COL point.",
+    "Do NOT tell the user to add more expense line items or list “missing categories to fill in.”",
+    "Do NOT invent precise dollar rents, COL index scores, or cite fake statistics.",
+    "",
+    "Write 6–10 plain-English bullets (leading dashes OK). No markdown headings.",
+    "",
+    "What TO write (this is the value of the panel):",
+    "1) City-specific cost-of-living color for EACH city in summary.cities / summary.rows:",
+    "   Use general knowledge of those places (and US vs Canada when relevant) covering themes in colThemesToDiscuss —",
+    "   groceries, dining, transit vs car, healthcare norms, childcare if plausible, seasonal utilities, lifestyle.",
+    "   Compare cities when useful. Prefer qualitative / directional language (“typically”, “often”, “tends to”).",
+    "2) Personalized read of the user’s expenseLines / topExpenseLines:",
+    "   How those named costs may feel, stretch, or behave differently across the cities; what to watch;",
+    "   suggestions that use the amounts they entered (e.g. grocery or debt lines) — not reminders to enter new rows.",
+    "   Remember expensesAreGlobalAcrossCities: the model applies the same line amounts everywhere;",
+    "   real life often diverges — say so when discussing grocery/transit/healthcare.",
+    "3) One brief closing caveat: qualitative COL notes are general knowledge + their inputs, not a quote of local prices or advice from a planner.",
     "",
     "Summary JSON:",
     JSON.stringify(summary ?? {}),
@@ -46,9 +54,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-        temperature: 0.4,
+        temperature: 0.55,
         messages: [
-          { role: "system", content: "Follow instructions exactly." },
+          {
+            role: "system",
+            content:
+              "You are a relocation cost-of-living advisor. Add insight beyond numbers already on screen. Never nag users to fill forms.",
+          },
           { role: "user", content: prompt },
         ],
       }),
@@ -75,7 +87,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       mode: "openai",
-      bullets: bullets.length ? bullets.slice(0, 8) : deterministic,
+      bullets: bullets.length ? bullets.slice(0, 10) : deterministic,
     });
   } catch (e) {
     return NextResponse.json({

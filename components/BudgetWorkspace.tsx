@@ -1885,22 +1885,22 @@ export function BudgetWorkspace() {
           <div className="rounded-2xl border-[3px] border-ink bg-pastel-lime/35 p-6 shadow-cut">
             <h3 className="font-marker text-2xl text-ink">AI Insights</h3>
             <p className="mt-2 text-xs text-ink/60">
-              Grounded in your inputs + calculated rows — including named expense lines and gaps in other
-              cost-of-living categories ·{" "}
+              City-by-city cost-of-living color (beyond the table) plus takes on your named expense lines ·{" "}
               {insightsMode === "openai" ? (
                 <>
-                  Wording from OpenAI using your summary only — double-check numbers above (not financial advice).
+                  Written by OpenAI from your cities + expenses — qualitative, not a rehash of leftover/tax rows
+                  (not financial advice).
                 </>
               ) : insightsMode === "deterministic" ? (
                 <>
-                  Rule-based bullets (tradeoffs, line-item suggestions, missing COL buckets). Add{" "}
-                  <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">OPENAI_API_KEY</code> to{" "}
-                  <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">.env.local</code>, restart{" "}
+                  Full city COL commentary needs{" "}
+                  <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">OPENAI_API_KEY</code> in{" "}
+                  <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">.env.local</code> — restart{" "}
                   <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">next dev</code>, then Calculate
-                  again for GPT insights.
+                  again.
                 </>
               ) : insightsMode === "error" ? (
-                <>Last insights request failed — deterministic bullets shown above.</>
+                <>Last insights request failed — fallback notes shown above.</>
               ) : (
                 <>Run Calculate to load insights.</>
               )}
