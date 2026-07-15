@@ -21,6 +21,8 @@ export type LocalTaxRegistryEntry = {
   resident_rate: number;
   non_resident_rate: number;
   unknown_residence_default: "resident" | "non_resident";
+  /** Alternate Places locality names that should match this entry (e.g. NYC → New York). */
+  locality_aliases?: string[];
   /**
    * When set for the user’s filing status and residence maps to resident, replace flat `resident_rate`
    * with marginal integration over `basisAnnual`. Non-residents still use flat `non_resident_rate` unless
@@ -44,6 +46,12 @@ function normalizeKey(s: string): string {
   return s.toLowerCase().replace(/\./g, "").trim().replace(/\s+/g, " ");
 }
 
+function localityMatches(entry: LocalTaxRegistryEntry, locality: string): boolean {
+  const key = normalizeKey(locality);
+  if (normalizeKey(entry.locality) === key) return true;
+  return (entry.locality_aliases ?? []).some((a) => normalizeKey(a) === key);
+}
+
 function matchingEntry(workCityLabel: string): LocalTaxRegistryEntry | undefined {
   const workLoc = guessLocalityFromLabel(workCityLabel);
   const workSt = guessStateFromLabel(workCityLabel);
@@ -51,8 +59,7 @@ function matchingEntry(workCityLabel: string): LocalTaxRegistryEntry | undefined
 
   return registry.entries.find(
     (e) =>
-      normalizeKey(e.locality) === normalizeKey(workLoc) &&
-      e.state.trim().toUpperCase() === workSt.toUpperCase(),
+      localityMatches(e, workLoc) && e.state.trim().toUpperCase() === workSt.toUpperCase(),
   );
 }
 
@@ -85,7 +92,7 @@ export function applyLocalTaxRegistrySupplement(
   let useResident = false;
   if (resLoc && resSt) {
     useResident =
-      normalizeKey(resLoc) === normalizeKey(entry.locality) &&
+      localityMatches(entry, resLoc) &&
       resSt.toUpperCase() === entry.state.trim().toUpperCase();
   } else {
     useResident = entry.unknown_residence_default === "resident";

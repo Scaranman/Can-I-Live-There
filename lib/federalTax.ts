@@ -80,22 +80,36 @@ export function federalOrdinaryIncomeTaxAnnual(
   return marginalBracketTaxAnnual(taxableOrdinary, rates.ordinary_income_brackets[filing]);
 }
 
-/** Employee Social Security (OASDI) on gross wages, capped at the annual wage base. */
-export function socialSecurityTaxAnnual(grossAnnual: number): number {
-  const gross = Math.max(0, grossAnnual);
-  const capped = Math.min(gross, rates.social_security.wage_base);
+/**
+ * FICA wage base: traditional 401(k) deferrals remain FICA-taxable; employee HSA/FSA
+ * cafeteria deferrals are generally excluded from Social Security and Medicare wages.
+ */
+export function ficaWageAnnual(params: {
+  grossAnnual: number;
+  hsaAnnual: number;
+  fsaAnnual: number;
+}): number {
+  const gross = Math.max(0, params.grossAnnual);
+  const cafeteria = Math.min(gross, Math.max(0, params.hsaAnnual + params.fsaAnnual));
+  return Math.max(0, gross - cafeteria);
+}
+
+/** Employee Social Security (OASDI) on FICA wages, capped at the annual wage base. */
+export function socialSecurityTaxAnnual(ficaWages: number): number {
+  const wages = Math.max(0, ficaWages);
+  const capped = Math.min(wages, rates.social_security.wage_base);
   return capped * rates.social_security.employee_rate;
 }
 
 /**
- * Employee Medicare (1.45% of all wages) + Additional Medicare (0.9% of wages above
+ * Employee Medicare (1.45% of all FICA wages) + Additional Medicare (0.9% of wages above
  * the filing-status threshold).
  */
-export function medicareTaxAnnual(grossAnnual: number, filing: FilingStatus): number {
-  const gross = Math.max(0, grossAnnual);
-  const base = gross * rates.medicare.employee_rate;
+export function medicareTaxAnnual(ficaWages: number, filing: FilingStatus): number {
+  const wages = Math.max(0, ficaWages);
+  const base = wages * rates.medicare.employee_rate;
   const thresh = additionalMedicareThresholdFor(filing);
-  const additional = Math.max(0, gross - thresh) * rates.medicare.additional_rate;
+  const additional = Math.max(0, wages - thresh) * rates.medicare.additional_rate;
   return base + additional;
 }
 
@@ -112,6 +126,11 @@ export function estimateFederalTaxesAnnual(params: FederalTaxEstimateInput): Fed
   const wagesForIncomeTax = Math.max(0, gross - pretax);
   const standardDeduction = standardDeductionFor(params.filingStatus);
   const taxableOrdinary = Math.max(0, wagesForIncomeTax - standardDeduction);
+  const ficaWages = ficaWageAnnual({
+    grossAnnual: gross,
+    hsaAnnual: params.hsaAnnual,
+    fsaAnnual: params.fsaAnnual,
+  });
 
   return {
     taxYear: rates.tax_year,
@@ -119,7 +138,7 @@ export function estimateFederalTaxesAnnual(params: FederalTaxEstimateInput): Fed
     standardDeduction,
     taxableOrdinary,
     federalIncomeAnnual: federalOrdinaryIncomeTaxAnnual(taxableOrdinary, params.filingStatus),
-    socialSecurityAnnual: socialSecurityTaxAnnual(gross),
-    medicareAnnual: medicareTaxAnnual(gross, params.filingStatus),
+    socialSecurityAnnual: socialSecurityTaxAnnual(ficaWages),
+    medicareAnnual: medicareTaxAnnual(ficaWages, params.filingStatus),
   };
 }

@@ -33,5 +33,12 @@ export function estimateMinnesotaStateTax(params: StateTaxEstimateInput): StateT
   const taxable = stateTaxableIncome(wages, params.filingStatus, STANDARD_DEDUCTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  return parts("MN", income);
+  // MN Paid Leave 2026: 0.88% total, 50/50 → 0.44% employee up to SS wage base.
+  const leave = Math.min(Math.max(0, params.grossAnnual), 184_500) * 0.0044;
+  return parts(
+    "MN",
+    income,
+    leave,
+    "Includes Minnesota Paid Leave employee share (0.44% up to SS wage base).",
+  );
 }

@@ -8,8 +8,18 @@
       "description": "NYC Personal Income Tax — marginal resident schedule on NYC taxable wages proxy",
       "basis": "taxable_wages",
       "resident_rate": 0.03078,
-      "non_resident_rate": 0.03078,
-      "unknown_residence_default": "non_resident",
+      "non_resident_rate": 0,
+      "unknown_residence_default": "resident",
+      "locality_aliases": [
+        "New York City",
+        "NYC",
+        "Manhattan",
+        "Brooklyn",
+        "Queens",
+        "The Bronx",
+        "Bronx",
+        "Staten Island"
+      ],
       "marginal_brackets_by_filing": {
         "single": [
           { "from": 0, "to": 12000, "rate": 0.03078 },
@@ -32,7 +42,7 @@
       },
       "api_credit_substrings": ["New York City", "NYC"],
       "reference_url": "https://www.nyc.gov/site/finance/taxes/personal-income-tax.page",
-      "notes": "Population rank 1 (2024 est., city proper). Resident NYC PIT uses marginal slices by filing status on taxable wages proxy — thresholds/rates follow NYC Finance resident schedules; verify annually. Non-residents and unknown residence default use flat non_resident_rate (approximate); NYC-source nonresident rules differ."
+      "notes": "Population rank 1 (2024 est., city proper). Resident NYC PIT uses marginal slices by filing status on taxable wages proxy — thresholds/rates follow NYC Finance resident schedules; verify annually. Nonresidents of NYC do not pay NYC PIT (commuter tax repealed). Unknown residence defaults to resident for this live-there estimator. locality_aliases cover common Places labels (NYC, boroughs)."
     },
     {
       "id": "los_angeles_ca",

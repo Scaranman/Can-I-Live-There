@@ -6,7 +6,7 @@
     "https://www.irs.gov/irb (Rev. Proc. 2025-32)",
     "https://www.ssa.gov/oact/cola/cbb.html"
   ],
-  "notes": "Employee-side US federal payroll estimates for app inputs: filingStatus, gross wages (salary+bonus+other), and pretax deferrals (traditional 401k, HSA, FSA). Ordinary income tax applies after pretax and the standard deduction (itemizing, credits, AMT, and dependents are out of scope). FICA Social Security and Medicare apply to gross wages; Additional Medicare uses filing-status thresholds on excess wages only.",
+  "notes": "Employee-side US federal payroll estimates for app inputs: filingStatus, gross wages (salary+bonus+other), and pretax deferrals (traditional 401k, HSA, FSA). Ordinary income tax applies after pretax and the standard deduction (itemizing, credits, AMT, and dependents are out of scope). FICA Social Security and Medicare apply to wages after HSA/FSA cafeteria deferrals (401k remains in the FICA wage base); Additional Medicare uses filing-status thresholds on excess FICA wages only.",
   "standard_deduction": {
     "single": 16100,
     "married": 32200,

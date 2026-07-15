@@ -138,9 +138,8 @@ export function estimatePayrollTaxesAnnual(params: {
   });
   const stateAnnual = state.stateIncomeAnnual + state.stateExtrasAnnual;
 
-  /** NYC-ish hint — ultra rough local piggyback (registry supplement overrides when present). */
-  const localAnnual =
-    params.cityLabel.toLowerCase().includes("new york") ? wagesForIncomeTax * 0.0125 : 0;
+  // Local wage tax comes from data/local-tax-rates.json via applyLocalTaxRegistrySupplement.
+  const localAnnual = 0;
 
   /**
    * Bona fide territory residents generally exclude territory-source wages from US federal

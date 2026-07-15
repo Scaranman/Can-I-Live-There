@@ -43,5 +43,12 @@ export function estimateNewYorkStateTax(params: StateTaxEstimateInput): StateTax
   const taxable = stateTaxableIncome(wages, params.filingStatus, STANDARD_DEDUCTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  return parts("NY", income);
+  // NY PFL 2026: 0.432% of gross wages, annual max $411.91 (NY DFS / paidfamilyleave.ny.gov).
+  const pflAnnual = Math.min(Math.max(0, params.grossAnnual) * 0.00432, 411.91);
+  return parts(
+    "NY",
+    income,
+    pflAnnual,
+    "Includes NY Paid Family Leave employee premium (0.432%, max $411.91). Excludes NY DBL.",
+  );
 }

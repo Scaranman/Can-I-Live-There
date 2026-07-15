@@ -1,7 +1,8 @@
 /**
  * Local Canada federal employee-side tax estimates (ordinary income + CPP/EI).
  * Rates: data/canada-federal-tax-rates.json
- * Not tax advice; excludes most credits beyond the basic personal amount, abatement, and AMT.
+ * Not tax advice; excludes most credits beyond BPA, Canada Employment Amount,
+ * CPP/EI contribution credits, and the Quebec abatement.
  */
 import rawRegistry from "@/data/canada-federal-tax-rates.json";
 import { marginalBracketTaxAnnual } from "./taxMath";
@@ -22,11 +23,16 @@ export type CanadaFederalTaxRatesFile = {
     phaseout_end: number;
     credit_rate: number;
   };
+  canada_employment_amount: number;
+  quebec_abatement_rate: number;
   cpp: {
     basic_exemption: number;
     ympe: number;
     employee_rate: number;
     max_employee: number;
+    /** Base CPP rate eligible for the federal tax credit (excludes enhancement). */
+    base_credit_rate: number;
+    max_base_credit: number;
     yampe: number;
     cpp2_rate: number;
     cpp2_max_employee: number;
@@ -51,7 +57,7 @@ export type CanadaFederalTaxEstimateInput = {
   quebec?: boolean;
   /**
    * When true (Quebec), skip CPP — QPP is assessed in the provincial estimate.
-   * Federal income tax still applies.
+   * Federal income tax still applies (with abatement); QPP-like base still credits.
    */
   skipCpp?: boolean;
 };
@@ -91,11 +97,48 @@ export function federalBasicPersonalAmount(netIncomeProxy: number): number {
   return b.maximum - t * (b.maximum - b.minimum);
 }
 
-export function canadaFederalOrdinaryIncomeTaxAnnual(taxableOrdinary: number): number {
-  const grossTax = marginalBracketTaxAnnual(taxableOrdinary, rates.ordinary_income_brackets);
-  const bpa = federalBasicPersonalAmount(taxableOrdinary);
-  const credit = bpa * rates.basic_personal_amount.credit_rate;
-  return Math.max(0, grossTax - credit);
+/**
+ * Base CPP contribution amount eligible for the federal non-refundable credit
+ * (enhancement / CPP2 excluded). Also used as a QPP-base proxy for Quebec credits.
+ */
+export function canadaCppBaseCreditAmount(grossAnnual: number): number {
+  const gross = Math.max(0, grossAnnual);
+  const c = rates.cpp;
+  const baseEarnings = Math.max(0, Math.min(gross, c.ympe) - c.basic_exemption);
+  return Math.min(baseEarnings * c.base_credit_rate, c.max_base_credit);
+}
+
+export function canadaFederalOrdinaryIncomeTaxAnnual(
+  taxableOrdinary: number,
+  opts?: {
+    grossAnnual?: number;
+    quebec?: boolean;
+    /** Employee EI premiums (full amount qualifies for credit). */
+    eiAnnual?: number;
+    /** Base CPP/QPP contribution amount eligible for the credit (not CPP2). */
+    cppBaseCreditAmount?: number;
+  },
+): number {
+  const taxable = Math.max(0, taxableOrdinary);
+  const grossTax = marginalBracketTaxAnnual(taxable, rates.ordinary_income_brackets);
+  const creditRate = rates.basic_personal_amount.credit_rate;
+
+  const bpa = federalBasicPersonalAmount(taxable);
+  const cea = Math.min(
+    rates.canada_employment_amount,
+    Math.max(0, opts?.grossAnnual ?? taxable),
+  );
+  const cppCreditBase = Math.max(0, opts?.cppBaseCreditAmount ?? 0);
+  const eiCreditBase = Math.max(0, opts?.eiAnnual ?? 0);
+
+  const credits =
+    (bpa + cea + cppCreditBase + eiCreditBase) * creditRate;
+
+  let tax = Math.max(0, grossTax - credits);
+  if (opts?.quebec) {
+    tax *= 1 - rates.quebec_abatement_rate;
+  }
+  return tax;
 }
 
 /** Base CPP + CPP2 employee contributions on gross earnings. */
@@ -125,13 +168,22 @@ export function estimateCanadaFederalTaxesAnnual(
   const wagesForIncomeTax = wagesAfterPretax(params);
   const taxableOrdinary = wagesForIncomeTax;
   const bpa = federalBasicPersonalAmount(taxableOrdinary);
+  const eiAnnual = canadaEiAnnual(params.grossAnnual, Boolean(params.quebec));
+  // Even for Quebec (skipCpp), apply a QPP-base credit proxy equal to the CPP base credit amount.
+  const cppBaseCreditAmount = canadaCppBaseCreditAmount(params.grossAnnual);
+
   return {
     taxYear: rates.tax_year,
     wagesForIncomeTax,
     taxableOrdinary,
     basicPersonalAmount: bpa,
-    federalIncomeAnnual: canadaFederalOrdinaryIncomeTaxAnnual(taxableOrdinary),
+    federalIncomeAnnual: canadaFederalOrdinaryIncomeTaxAnnual(taxableOrdinary, {
+      grossAnnual: params.grossAnnual,
+      quebec: Boolean(params.quebec),
+      eiAnnual,
+      cppBaseCreditAmount,
+    }),
     cppAnnual: params.skipCpp ? 0 : canadaCppAnnual(params.grossAnnual),
-    eiAnnual: canadaEiAnnual(params.grossAnnual, Boolean(params.quebec)),
+    eiAnnual,
   };
 }

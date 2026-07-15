@@ -29,5 +29,13 @@ export function estimateMassachusettsStateTax(params: StateTaxEstimateInput): St
   const taxable = stateTaxableIncome(wages, params.filingStatus, undefined, PERSONAL_EXEMPTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  return parts("MA", income);
+  // MA PFML employee share ≈ 0.46% of wages up to the SS wage base (Mass.gov 2025–2026 tables).
+  const pfmlBase = Math.min(Math.max(0, params.grossAnnual), 184_500);
+  const extras = pfmlBase * 0.0046;
+  return parts(
+    "MA",
+    income,
+    extras,
+    "Includes MA PFML employee share (~0.46% up to SS wage base). Large-employer medical split approximated.",
+  );
 }

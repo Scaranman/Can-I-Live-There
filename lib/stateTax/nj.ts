@@ -40,5 +40,13 @@ export function estimateNewJerseyStateTax(params: StateTaxEstimateInput): StateT
   const taxable = stateTaxableIncome(wages, params.filingStatus, undefined, PERSONAL_EXEMPTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  return parts("NJ", income);
+  // NJ TDI 0.19% + FLI 0.23% on first $171,100 (NJ DOL 2026).
+  const leaveBase = Math.min(Math.max(0, params.grossAnnual), 171_100);
+  const extras = leaveBase * 0.0019 + leaveBase * 0.0023;
+  return parts(
+    "NJ",
+    income,
+    extras,
+    "Includes NJ TDI (0.19%) + FLI (0.23%) on wages up to $171,100. Excludes employee UI/WF.",
+  );
 }

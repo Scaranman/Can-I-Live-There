@@ -33,5 +33,12 @@ export function estimateOregonStateTax(params: StateTaxEstimateInput): StateTaxA
   const taxable = stateTaxableIncome(wages, params.filingStatus, STANDARD_DEDUCTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  return parts("OR", income);
+  // Paid Leave Oregon: 1% total, employee 60% → 0.6% up to SS wage base.
+  const leave = Math.min(Math.max(0, params.grossAnnual), 184_500) * 0.006;
+  return parts(
+    "OR",
+    income,
+    leave,
+    "Includes Paid Leave Oregon employee share (0.6% up to SS wage base).",
+  );
 }

@@ -45,6 +45,6 @@ export function estimateCaliforniaStateTax(params: StateTaxEstimateInput): State
   const taxable = stateTaxableIncome(wages, params.filingStatus, STANDARD_DEDUCTION);
   const brackets = filingKey(params.filingStatus) === "married" ? BRACKETS_MARRIED : BRACKETS_SINGLE;
   const income = graduatedStateIncomeTax(taxable, brackets);
-  const extras = Math.max(0, params.grossAnnual) * 0.011; // CA SDI / disability payroll tax (no wage ceiling for recent years)
+  const extras = Math.max(0, params.grossAnnual) * 0.013; // CA SDI 2026: 1.3%, no wage ceiling (EDD)
   return parts("CA", income, extras);
 }

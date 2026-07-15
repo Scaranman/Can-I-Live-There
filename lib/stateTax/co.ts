@@ -19,5 +19,12 @@ export function estimateColoradoStateTax(params: StateTaxEstimateInput): StateTa
   const taxable = stateTaxableIncome(wages, params.filingStatus, STANDARD_DEDUCTION);
   const floor = 0;
   const income = flatStateIncomeTax(taxable, RATE, floor);
-  return parts("CO", income);
+  // CO FAMLI 2026: 0.88% total, 50/50 split → 0.44% employee up to SS wage base.
+  const famli = Math.min(Math.max(0, params.grossAnnual), 184_500) * 0.0044;
+  return parts(
+    "CO",
+    income,
+    famli,
+    "Includes Colorado FAMLI employee share (0.44% up to SS wage base).",
+  );
 }

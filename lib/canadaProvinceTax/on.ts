@@ -1,10 +1,16 @@
 /**
  * Ontario (ON) — local provincial/territorial wage tax estimate (TY 2026).
  * Brackets: CRA current-year rates; BPA from CRA T4032 provincial payroll tables.
- * Not tax advice; excludes most credits beyond BPA (and ON surtax / QC extras where noted).
+ * Includes Ontario surtax and Ontario Health Premium.
+ * Not tax advice; excludes Ontario tax reduction and most other credits.
  */
 import type { CanadaProvinceBracket, CanadaProvinceTaxAnnualParts, CanadaProvinceTaxEstimateInput } from "./types";
-import { ontarioSurtaxAnnual, parts, provincialTaxAfterBpaCredit } from "./helpers";
+import {
+  ontarioHealthPremiumAnnual,
+  ontarioSurtaxAnnual,
+  parts,
+  provincialTaxAfterBpaCredit,
+} from "./helpers";
 
 const BRACKETS: CanadaProvinceBracket[] = [
   { from: 0, to: 53891, rate: 0.0505 },
@@ -19,6 +25,13 @@ const LOWEST_RATE = 0.0505;
 
 export function estimateOntarioProvinceTax(params: CanadaProvinceTaxEstimateInput): CanadaProvinceTaxAnnualParts {
   const basic = provincialTaxAfterBpaCredit(params.taxableAnnual, BRACKETS, BPA, LOWEST_RATE);
-  const total = basic + ontarioSurtaxAnnual(basic);
-  return parts("ON", total, 0, 0, "Includes Ontario surtax (CRA T4032-ON 2026 thresholds).");
+  const withSurtax = basic + ontarioSurtaxAnnual(basic);
+  const total = withSurtax + ontarioHealthPremiumAnnual(params.taxableAnnual);
+  return parts(
+    "ON",
+    total,
+    0,
+    0,
+    "Includes Ontario surtax (CRA T4032-ON 2026) and Ontario Health Premium.",
+  );
 }
