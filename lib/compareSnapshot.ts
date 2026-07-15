@@ -22,7 +22,7 @@ import { derivePayrollWorkCountry } from "./deriveWorkCountry";
 import { filterCitiesWithAnyLocation } from "./cityEntered";
 import type { ComparisonComputed, ComparisonSnapshot } from "./types";
 
-/** Always local estimators after migrating off PayrollTaxAPI / canatax. */
+/** Tax estimates always come from local US / Canada modules. */
 export type CompareTaxSource = "local";
 
 export type PayrollTaxLookupDebugRow = {
