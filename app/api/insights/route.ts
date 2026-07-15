@@ -19,12 +19,27 @@ export async function POST(req: Request) {
   }
 
   const prompt = [
-    "You write ultra-short budget insights for a relocation calculator.",
-    "Hard rules:",
-    "- Only reference facts present in the JSON summary (city labels, dollar amounts, percentages).",
-    "- The summary includes reportingCurrency, expenseLineSummary, cadPerUsd, fxSource — use them when commenting on US vs Canada or currency conversion.",
-    "- Never cite external stats, rents, or COL indexes.",
-    "- 3–6 bullets, plain English, no markdown.",
+    "You write the AI Insights panel for a city-to-city relocation budget app (“Can I Live There?”).",
+    "",
+    "The results dashboard ALREADY shows take-home, housing, taxes, leftover, and deltas.",
+    "Do NOT restate which city has the highest/lowest leftover, tax %, or housing total.",
+    "Do NOT narrate FX rates or “table is in USD/CAD” unless essential to a COL point.",
+    "Do NOT tell the user to add more expense line items or list “missing categories to fill in.”",
+    "Do NOT invent precise dollar rents, COL index scores, or cite fake statistics.",
+    "",
+    "Write 6–10 plain-English bullets (leading dashes OK). No markdown headings.",
+    "",
+    "What TO write (this is the value of the panel):",
+    "1) City-specific cost-of-living color for EACH city in summary.cities:",
+    "   Use general knowledge of those places (and US vs Canada when relevant) covering themes in colThemesToDiscuss —",
+    "   groceries, dining, transit vs car, healthcare norms, childcare if plausible, seasonal utilities, lifestyle.",
+    "   Compare cities when useful. Prefer qualitative / directional language (“typically”, “often”, “tends to”).",
+    "2) Personalized read of the user’s expenseLines / topExpenseLines:",
+    "   How those named costs may feel, stretch, or behave differently across the cities; what to watch;",
+    "   suggestions that use the amounts they entered (e.g. grocery or debt lines) — not reminders to enter new rows.",
+    "   Remember expensesAreGlobalAcrossCities: the model applies the same line amounts everywhere;",
+    "   real life often diverges — say so when discussing grocery/transit/healthcare.",
+    "3) One brief closing caveat: qualitative COL notes are general knowledge + their inputs, not a quote of local prices or advice from a planner.",
     "",
     "Summary JSON:",
     JSON.stringify(summary ?? {}),
@@ -39,9 +54,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-        temperature: 0.35,
+        temperature: 0.55,
         messages: [
-          { role: "system", content: "Follow instructions exactly." },
+          {
+            role: "system",
+            content:
+              "You are a relocation cost-of-living advisor. Add insight beyond numbers already on screen. Never nag users to fill forms.",
+          },
           { role: "user", content: prompt },
         ],
       }),
@@ -62,13 +81,13 @@ export async function POST(req: Request) {
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     const bullets = text
       .split("\n")
-      .map((l) => l.replace(/^[-•]\s*/, "").trim())
+      .map((l) => l.replace(/^[-•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
       .filter(Boolean);
 
     return NextResponse.json({
       ok: true,
       mode: "openai",
-      bullets: bullets.length ? bullets : deterministic,
+      bullets: bullets.length ? bullets.slice(0, 10) : deterministic,
     });
   } catch (e) {
     return NextResponse.json({

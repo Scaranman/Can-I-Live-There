@@ -177,16 +177,16 @@ System derives:
 
 Examples (illustrative):
 
-- “Your leftover cash is highest in **City X** primarily due to lower housing vs **baseline**, despite higher taxes.”
-- “A higher salary in **City Y** is partly offset by taxes and housing—net leftover changes by ~$Z/month.”
+- “In **City X**, groceries and dining typically stretch farther leftover dollars than in **City Y**, even when rents look similar on paper.”
+- “Your **Groceries** line (~$Z/mo) is applied equally in every column — in practice that category often costs more in dense coastal metros; watch whether transit can offset car costs in **City X**.”
 
-**Hard constraint:** insights must only reference:
+**Requirements:**
 
-- user inputs,
-- computed outputs,
-- known tax/location metadata,
+- Insights should add **qualitative cost-of-living color for each compared city** (groceries, transit vs car, healthcare norms, lifestyle) rather than restate leftover / tax / housing rankings already shown in the UI.
+- Use the user’s **named expense lines** for personalized suggestions (how those costs may behave across cities) — do **not** nag users to fill missing categories.
+- May use **general knowledge** about the named cities (directional / typical language). Must **not** invent precise rents, COL index scores, or fake statistics.
 
-…and must not invent external statistics.
+**Hard constraint:** do not invent fabricated numeric statistics; qualitative city knowledge is allowed when clearly framed as typical/general.
 
 ---
 
@@ -257,9 +257,10 @@ Must incorporate **pre-tax payroll contributions** according to provider capabil
 
 Requirements:
 
-- Summarize affordability differences across cities vs baseline.
-- Identify budget risks/opportunities grounded in user-provided expenses and computed deltas.
-- Explain major tradeoffs (taxes vs housing vs income differences).
+- Add qualitative cost-of-living insight for each compared city beyond payroll/housing math already on screen.
+- Personalize suggestions using the user’s named monthly expense lines (how those costs may differ across cities).
+- Do not merely restate leftover rankings, tax percentages, or housing totals from the results table.
+- Do not invent precise external price quotes or COL index scores; directional general knowledge is OK when framed as typical.
 
 ### 7.4 Places service
 

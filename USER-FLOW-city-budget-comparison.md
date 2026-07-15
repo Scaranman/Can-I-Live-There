@@ -114,13 +114,14 @@ For **each city**, the system:
 
 4. Computes **Δ vs baseline** for key outputs.
 
-5. Calls **OpenAI** for insights using **only**:
+5. Calls **OpenAI** for insights using:
 
-   - user inputs,
-   - computed outputs,
-   - Places/tax jurisdiction metadata,
+   - city labels / countries in the comparison,
+   - user expense line items,
+   - compact computed context for grounding,
+   - general knowledge of cost-of-living differences across those cities (directional, not fabricated price quotes),
 
-   with **no** invented external statistics.
+   and must **not** merely restate leftover / tax / housing rankings already shown.
 
 ---
 
@@ -139,8 +140,8 @@ For **each city**, the system:
 
 ### AI insights panel
 
-- Short bullets: overall summary, risks, opportunities, major tradeoffs (taxes vs housing vs income).
-- Must remain tethered to displayed numbers.
+- Short bullets: **city-specific COL color** (groceries, transit, healthcare norms, lifestyle) plus **personalized notes on named expense lines**.
+- Must not rehash the comparison table’s leftover/tax/housing rankings.
 
 ---
 

@@ -1,69 +1,65 @@
-import type { ComparisonComputed } from "./types";
-import { formatMoney } from "./money";
+import type { ComparisonComputed, ComparisonSnapshot } from "./types";
+import { buildExpenseInsightsContext } from "./insightsContext";
 
+/**
+ * Offline / no-key fallback. Intentionally does NOT rehash leftover, tax %, or housing
+ * totals from the dashboard — those are already on screen. True city COL color needs GPT.
+ */
 export function deterministicInsights(params: {
   baselineLabel: string;
   computed: ComparisonComputed;
+  snapshot?: ComparisonSnapshot;
 }): string[] {
-  const { baselineLabel, computed } = params;
-  const cur = computed.reportingCurrency;
-  const ranked = [...computed.cities].sort((a, b) => b.leftoverMonthly - a.leftoverMonthly);
-  const best = ranked[0];
-  const worst = ranked.at(-1);
-
-  const bullets: string[] = [];
+  const { computed, snapshot } = params;
+  const cities = computed.cities.map((c) => c.label).filter(Boolean);
+  const cityList =
+    cities.length === 0
+      ? "your compared cities"
+      : cities.length === 1
+        ? cities[0]
+        : cities.length === 2
+          ? `${cities[0]} and ${cities[1]}`
+          : `${cities.slice(0, -1).join(", ")}, and ${cities.at(-1)}`;
 
   const hasUs = computed.cities.some((c) => c.workCountry === "US");
   const hasCa = computed.cities.some((c) => c.workCountry === "CA");
-  const fxLabel =
-    computed.fxSource === "fallback"
-      ? "offline placeholder rate"
-      : computed.fxSource === "open_er_api"
-        ? "ExchangeRate-API (open feed)"
-        : "ExchangeRate-API";
+
+  const bullets: string[] = [
+    `Qualitative cost-of-living notes for ${cityList} (groceries, transit, healthcare norms, lifestyle) need the OpenAI insights path — this fallback does not invent city price stories.`,
+  ];
+
   if (hasUs && hasCa) {
     bullets.push(
-      `US and Canadian columns are mixed — salary and housing use each country’s currency for payroll, then take-home and housing convert to ${cur} at about ${computed.cadPerUsd.toFixed(3)} CAD per USD (${fxLabel}).`,
+      `You’re comparing US and Canadian payroll cities: everyday life often diverges on healthcare (employer insurance vs public coverage plus dental/vision extras), sales-tax/HST feel at the register, and how much a car vs transit matters — even when housing and withholding are already modeled above.`,
+    );
+  } else if (hasCa) {
+    bullets.push(
+      `For Canadian cities, groceries, telecom, and transit/car need can differ by metro as much as rent does; provincial health coverage usually shrinks medical-premium risk relative to typical US employer plans, while dental and prescriptions may still hit cash flow.`,
     );
   } else {
     bullets.push(
-      `Table amounts are in ${cur}. Expenses: ${computed.expenseLineSummary}. FX: 1 USD ≈ ${computed.cadPerUsd.toFixed(4)} CAD (${fxLabel}).`,
+      `Across US metros, leftovers on the dashboard ignore how groceries, car-dependence, childcare, and employer health premiums usually diverge by city — those are the questions the AI Insights panel is meant to answer when GPT is enabled.`,
     );
   }
 
-  if (best && worst && best.cityId !== worst.cityId) {
-    bullets.push(
-      `Highest monthly leftover right now: ${best.label} (~${formatMoney(Math.round(best.leftoverMonthly), cur)}). Lowest: ${worst.label} (~${formatMoney(Math.round(worst.leftoverMonthly), cur)}), vs baseline “${baselineLabel}”.`,
-    );
-  }
-
-  const housingSpread =
-    computed.cities.length >= 2
-      ? Math.max(...computed.cities.map((c) => c.housingMonthly)) -
-        Math.min(...computed.cities.map((c) => c.housingMonthly))
-      : 0;
-
-  if (housingSpread > 50) {
-    bullets.push(
-      `Housing differs by about ${formatMoney(Math.round(housingSpread), cur)} / month across columns — that alone can reorder “best city” once taxes net out.`,
-    );
-  }
-
-  const taxSpread =
-    computed.cities.length >= 2
-      ? Math.max(...computed.cities.map((c) => c.tax.effectiveRate)) -
-        Math.min(...computed.cities.map((c) => c.tax.effectiveRate))
-      : 0;
-
-  if (taxSpread > 0.03) {
-    bullets.push(
-      `Combined withholding rates differ by ~${(taxSpread * 100).toFixed(1)} percentage points across cities — compare the numbers above before trusting small leftover gaps.`,
-    );
+  if (snapshot) {
+    const ctx = buildExpenseInsightsContext(snapshot, computed);
+    if (ctx.topExpenseLines.length > 0) {
+      bullets.push(
+        `Looking at your lines (${ctx.topExpenseLines.join("; ")}): the calculator applies those same amounts in every city, so ranking changes come from income, housing, and tax — while in real life grocery, transit, or similar lines often stretch or shrink after a move.`,
+      );
+      const top = ctx.expenseLines[0];
+      if (top) {
+        bullets.push(
+          `Suggestion on “${top.name}” (${top.amountReporting}/mo): treat it as a lifestyle signal when you compare ${cityList} — ask whether that category typically costs more or less in each place rather than assuming the leftover gap alone captures it.`,
+        );
+      }
+    }
   }
 
   bullets.push(
-    `These notes use only your inputs and the on-screen estimates — not a substitute for a tax or payroll professional.`,
+    `Add OPENAI_API_KEY for city-by-city COL commentary that goes beyond the numbers already shown. This is not tax, payroll, or financial advice.`,
   );
 
-  return bullets.slice(0, 6);
+  return bullets;
 }
