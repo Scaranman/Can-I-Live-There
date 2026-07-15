@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "tax_year": 2026,
+  "reference_urls": [
+    "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
+    "https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html"
+  ],
+  "notes": "Employee-side Canada federal income tax + CPP/EI for app inputs (gross wages, pretax RRSP-like deferrals approximated via 401k/HSA/FSA fields). Basic personal amount credit at the lowest federal rate. Quebec residents still pay federal tax (abatement omitted) and use reduced EI + QPP/QPIP via provincial modules.",
+  "ordinary_income_brackets": [
+    {
+      "from": 0,
+      "to": 58523,
+      "rate": 0.14
+    },
+    {
+      "from": 58523,
+      "to": 117045,
+      "rate": 0.205
+    },
+    {
+      "from": 117045,
+      "to": 181440,
+      "rate": 0.26
+    },
+    {
+      "from": 181440,
+      "to": 258482,
+      "rate": 0.29
+    },
+    {
+      "from": 258482,
+      "to": null,
+      "rate": 0.33
+    }
+  ],
+  "basic_personal_amount": {
+    "maximum": 16452,
+    "minimum": 14829,
+    "phaseout_start": 181440,
+    "phaseout_end": 258482,
+    "credit_rate": 0.14
+  },
+  "cpp": {
+    "basic_exemption": 3500,
+    "ympe": 74600,
+    "employee_rate": 0.0595,
+    "max_employee": 4230.45,
+    "yampe": 85000,
+    "cpp2_rate": 0.04,
+    "cpp2_max_employee": 416
+  },
+  "ei": {
+    "max_insurable": 68900,
+    "employee_rate": 0.0163,
+    "max_employee": 1123.07,
+    "quebec_employee_rate": 0.013,
+    "quebec_max_employee": 895.7
+  }
+}

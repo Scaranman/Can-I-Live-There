@@ -152,7 +152,7 @@ export async function compareSnapshotOnServer(
           caStubRows += 1;
           payrollDebug.outcome = "ca_no_province";
           warnings.push(
-            `“${city.label || "City"}” has no Canadian province — demo Canada rates (ON-style) used. Add e.g. “Toronto, ON”.`,
+            `“${city.label || "City"}” has no Canadian province — local Canada rates (ON default) used. Add e.g. “Toronto, ON”.`,
           );
           tax = estimateCanadaPayrollRough(grossAnnual, pretaxTotal, province);
         } else {
@@ -165,7 +165,7 @@ export async function compareSnapshotOnServer(
             caStubRows += 1;
             payrollDebug.outcome = "ca_demo";
             warnings.push(
-              "Canada payroll: Python/canatax not available on this host — rough demo withholding used. Set CANATAX_PYTHON and install requirements.txt locally for canatax.",
+              "Canada payroll: Python/canatax not available on this host — local federal/provincial estimate used. Set CANATAX_PYTHON and install requirements.txt locally for canatax.",
             );
             tax = estimateCanadaPayrollRough(grossAnnual, pretaxTotal, province);
           }

@@ -1,8 +1,10 @@
 /**
- * Canada payroll estimates: rough TS fallback + shared parsers/mappers.
+ * Canada payroll estimates: local federal + provincial modules, parsers, and canatax mappers.
  * Optional Python bridge lives in canadaCanataxServer.ts (server-only).
  * Not tax advice.
  */
+import { estimateCanadaFederalTaxesAnnual } from "./canadaFederalTax";
+import { estimateCanadaProvinceTaxesAnnual } from "./canadaProvinceTax";
 import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
 
 const VALID_CA = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
@@ -95,30 +97,10 @@ export function mapCanataxToPayrollEstimate(
   };
 }
 
-/** Demo-only combined income-tax proxy by province (CPP/EI modeled separately). */
-const ROUGH_COMBINED_RATE: Record<string, number> = {
-  AB: 0.22,
-  BC: 0.24,
-  MB: 0.25,
-  NB: 0.24,
-  NL: 0.26,
-  NS: 0.27,
-  NT: 0.2,
-  NU: 0.2,
-  ON: 0.26,
-  PE: 0.25,
-  QC: 0.28,
-  SK: 0.23,
-  YT: 0.2,
-};
-
-const CPP_RATE = 0.0595;
-const CPP_CEILING = 68500;
-const CPP_MAX_EMPLOYEE = 3867;
-const EI_RATE = 0.0163;
-const EI_CEILING = 63200;
-const EI_MAX_EMPLOYEE = 1072;
-
+/**
+ * Local TS Canada payroll estimate (federal + province modules).
+ * UI mapping matches canatax: federal / provincial / CPP|QPP / EI / QPIP→local.
+ */
 export function estimateCanadaPayrollRough(
   grossAnnual: number,
   pretaxTotal: number,
@@ -128,26 +110,38 @@ export function estimateCanadaPayrollRough(
   const pretax = Math.min(gross, Math.max(0, pretaxTotal));
   const taxable = Math.max(0, gross - pretax);
   const prov = province.toUpperCase();
-  const combinedRate = ROUGH_COMBINED_RATE[prov] ?? 0.24;
-  const incomeTaxAnnual = taxable * combinedRate;
-  const fedShare = incomeTaxAnnual * 0.58;
-  const provShare = incomeTaxAnnual * 0.42;
+  const isQuebec = prov === "QC";
 
-  const cppWages = Math.min(taxable, CPP_CEILING);
-  const cppAnnual = Math.min(cppWages * CPP_RATE, CPP_MAX_EMPLOYEE);
-  const eiWages = Math.min(taxable, EI_CEILING);
-  const eiAnnual = Math.min(eiWages * EI_RATE, EI_MAX_EMPLOYEE);
+  const federal = estimateCanadaFederalTaxesAnnual({
+    grossAnnual: gross,
+    traditional401kAnnual: pretax,
+    hsaAnnual: 0,
+    fsaAnnual: 0,
+    quebec: isQuebec,
+    skipCpp: isQuebec,
+  });
 
-  const totalAnnual = fedShare + provShare + cppAnnual + eiAnnual;
+  const provincial = estimateCanadaProvinceTaxesAnnual(prov, {
+    taxableAnnual: taxable,
+    grossAnnual: gross,
+  });
+
+  const fedAnnual = federal.federalIncomeAnnual;
+  const provAnnual = provincial.provincialIncomeAnnual;
+  const cppLike = federal.cppAnnual + provincial.qppAnnual;
+  const eiAnnual = federal.eiAnnual;
+  const qpipAnnual = provincial.qpipAnnual;
+
+  const totalAnnual = fedAnnual + provAnnual + cppLike + eiAnnual + qpipAnnual;
   const netAnnual = Math.max(0, gross - pretax - totalAnnual);
   const effectiveRate = gross > 0 ? totalAnnual / gross : 0;
 
   return {
     netAnnual,
-    monthlyFederal: fedShare / 12,
-    monthlyState: provShare / 12,
-    monthlyLocal: 0,
-    monthlyFica: cppAnnual / 12,
+    monthlyFederal: fedAnnual / 12,
+    monthlyState: provAnnual / 12,
+    monthlyLocal: qpipAnnual / 12,
+    monthlyFica: cppLike / 12,
     monthlyMedicare: eiAnnual / 12,
     effectiveRate,
   };
