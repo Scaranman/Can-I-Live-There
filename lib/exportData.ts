@@ -2,6 +2,7 @@ import type { ComparisonComputed, ComparisonSnapshot } from "./types";
 import { workCountryToCurrency } from "./currencyConversion";
 import { deltasVsBaseline } from "./compute";
 import { formatMoney } from "./money";
+import { buildExpenseInsightsContext } from "./insightsContext";
 
 export function buildExportPayload(snapshot: ComparisonSnapshot, computed: ComparisonComputed | null) {
   return {
@@ -124,6 +125,7 @@ export function summarizeForInsights(snapshot: ComparisonSnapshot, computed: Com
   const baselineRow = computed.cities.find((c) => c.cityId === baseline?.id);
   const ranked = [...computed.cities].sort((a, b) => b.leftoverMonthly - a.leftoverMonthly);
   const cur = computed.reportingCurrency;
+  const expenseContext = buildExpenseInsightsContext(snapshot, computed);
   return {
     baselineLabel: baseline?.label ?? "Baseline",
     bestLeftover: ranked[0]?.label,
@@ -133,11 +135,14 @@ export function summarizeForInsights(snapshot: ComparisonSnapshot, computed: Com
     cadPerUsd: computed.cadPerUsd,
     fxSource: computed.fxSource,
     fxFetchedAt: computed.fxFetchedAt,
+    /** Named monthly expense lines the user entered (not only the aggregate total). */
+    ...expenseContext,
     rows: computed.cities.map((c) => ({
       city: c.label,
       payrollCountry: c.workCountry,
       residenceLabel:
         snapshot.cities.find((x) => x.id === c.cityId)?.residenceLabel?.trim() || "",
+      housingMode: snapshot.cities.find((x) => x.id === c.cityId)?.housing.mode ?? "rent",
       leftoverMonthly: formatMoney(c.leftoverMonthly, cur),
       annualSavingsProxy: formatMoney(c.annualSavingsProxy, cur),
       netMonthly: formatMoney(c.netMonthly, cur),

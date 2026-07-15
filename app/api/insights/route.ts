@@ -19,12 +19,19 @@ export async function POST(req: Request) {
   }
 
   const prompt = [
-    "You write ultra-short budget insights for a relocation calculator.",
+    "You write short, useful budget insights for a relocation calculator.",
     "Hard rules:",
-    "- Only reference facts present in the JSON summary (city labels, dollar amounts, percentages).",
-    "- The summary includes reportingCurrency, expenseLineSummary, cadPerUsd, fxSource — use them when commenting on US vs Canada or currency conversion.",
-    "- Never cite external stats, rents, or COL indexes.",
-    "- 3–6 bullets, plain English, no markdown.",
+    "- Only reference facts present in the JSON summary (city labels, dollar amounts, percentages, named expense lines, enteredColAspects, missingColAspects).",
+    "- Never invent city-specific rents, wages, or external COL indexes / statistics.",
+    "- Do not invent expense amounts the user did not enter.",
+    "- Plain English bullets, no markdown headings, no numbering schema beyond leading dashes.",
+    "- Return 5–8 bullets.",
+    "",
+    "Cover these themes (skip a theme only if the JSON has nothing useful for it):",
+    "1) Cross-city tradeoffs: leftover, housing, taxes, FX / reportingCurrency when relevant.",
+    "2) Line-item expenses: name the user’s largest expenseLines / topExpenseLines; say how expenseShareOfBaselineTakeHomePct or expenseMonthlyTotalReporting affects leftover. Give 1–2 concrete suggestions grounded only in those named lines (trim, combine, renegotiate, watch FX on CAD vs USD lines, etc.).",
+    "3) Other cost-of-living aspects: using missingColAspects (and noting that housing is already modeled per city), mention 2–4 living-cost categories the user has NOT entered that often change after relocating. Frame these as budget gaps to fill — not as claims about how expensive a city is.",
+    "4) Close with a caution that this is input-based only, not professional advice — unless a similar caution is already clear in an earlier bullet.",
     "",
     "Summary JSON:",
     JSON.stringify(summary ?? {}),
@@ -39,7 +46,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-        temperature: 0.35,
+        temperature: 0.4,
         messages: [
           { role: "system", content: "Follow instructions exactly." },
           { role: "user", content: prompt },
@@ -62,13 +69,13 @@ export async function POST(req: Request) {
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     const bullets = text
       .split("\n")
-      .map((l) => l.replace(/^[-•]\s*/, "").trim())
+      .map((l) => l.replace(/^[-•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
       .filter(Boolean);
 
     return NextResponse.json({
       ok: true,
       mode: "openai",
-      bullets: bullets.length ? bullets : deterministic,
+      bullets: bullets.length ? bullets.slice(0, 8) : deterministic,
     });
   } catch (e) {
     return NextResponse.json({

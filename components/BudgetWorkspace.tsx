@@ -806,7 +806,11 @@ export function BudgetWorkspace() {
     setStatus("Generating insights…");
 
     const summary = summarizeForInsights(snapshot, nextComputed);
-    const det = deterministicInsights({ baselineLabel: summary.baselineLabel, computed: nextComputed });
+    const det = deterministicInsights({
+      baselineLabel: summary.baselineLabel,
+      computed: nextComputed,
+      snapshot,
+    });
 
     try {
       const res = await fetch("/api/insights", {
@@ -1881,14 +1885,15 @@ export function BudgetWorkspace() {
           <div className="rounded-2xl border-[3px] border-ink bg-pastel-lime/35 p-6 shadow-cut">
             <h3 className="font-marker text-2xl text-ink">AI Insights</h3>
             <p className="mt-2 text-xs text-ink/60">
-              Grounded in your inputs + the calculated rows ·{" "}
+              Grounded in your inputs + calculated rows — including named expense lines and gaps in other
+              cost-of-living categories ·{" "}
               {insightsMode === "openai" ? (
                 <>
                   Wording from OpenAI using your summary only — double-check numbers above (not financial advice).
                 </>
               ) : insightsMode === "deterministic" ? (
                 <>
-                  Rule-based bullets. Add{" "}
+                  Rule-based bullets (tradeoffs, line-item suggestions, missing COL buckets). Add{" "}
                   <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">OPENAI_API_KEY</code> to{" "}
                   <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">.env.local</code>, restart{" "}
                   <code className="rounded bg-ink/10 px-1 py-0.5 font-mono text-[11px]">next dev</code>, then Calculate
