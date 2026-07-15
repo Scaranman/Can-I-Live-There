@@ -1,12 +1,12 @@
 /**
  * DEMO payroll-tax approximation for MVP when PayrollTaxAPI is not wired.
- * Federal: lib/federalTax.ts. State: lib/stateTax/<code>.ts (all 50 states).
+ * Federal: lib/federalTax.ts. State/DC/territories: lib/stateTax/<code>.ts.
  * Local remains a small heuristic / registry supplement.
  * Not tax advice. UI labels this explicitly.
  */
 import { estimateFederalTaxesAnnual } from "./federalTax";
 import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
-import { estimateStateTaxesAnnual } from "./stateTax";
+import { estimateStateTaxesAnnual, isUsTerritoryTaxCode } from "./stateTax";
 import type { FilingStatus } from "./types";
 
 /** Lowercase full state / territory names → USPS (incl. District of Columbia). */
@@ -62,6 +62,17 @@ const STATE_NAME_TO_CODE: Record<string, string> = {
   wisconsin: "WI",
   wyoming: "WY",
   "district of columbia": "DC",
+  // Inhabited US territories
+  "puerto rico": "PR",
+  guam: "GU",
+  "virgin islands": "VI",
+  "u.s. virgin islands": "VI",
+  "us virgin islands": "VI",
+  "united states virgin islands": "VI",
+  "american samoa": "AS",
+  "northern mariana islands": "MP",
+  "commonwealth of the northern mariana islands": "MP",
+  cnmi: "MP",
 };
 
 const SKIP_STATE_SEGMENTS = new Set(["usa", "us", "united states", "united states of america"]);
@@ -131,7 +142,12 @@ export function estimatePayrollTaxesAnnual(params: {
   const localAnnual =
     params.cityLabel.toLowerCase().includes("new york") ? wagesForIncomeTax * 0.0125 : 0;
 
-  const fedAnnual = federal.federalIncomeAnnual;
+  /**
+   * Bona fide territory residents generally exclude territory-source wages from US federal
+   * ordinary income tax and pay local/territorial tax instead (mapped to monthlyState).
+   * FICA/Medicare still apply. DC residents continue to pay both federal and DC tax.
+   */
+  const fedAnnual = isUsTerritoryTaxCode(st) ? 0 : federal.federalIncomeAnnual;
   const ficaAnnual = federal.socialSecurityAnnual;
   const medicareAnnual = federal.medicareAnnual;
 
