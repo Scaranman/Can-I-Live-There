@@ -1,8 +1,8 @@
 /**
  * Shared helpers for per-state employee income-tax estimates.
- * Bracket math matches PayrollTaxAPI / federal local estimators ({ from, to, rate }).
+ * Bracket math shared with federal / provincial local estimators ({ from, to, rate }).
  */
-import { marginalBracketTaxAnnual } from "../payrollTaxApi";
+import { marginalBracketTaxAnnual } from "../taxMath";
 import type { FilingStatus } from "../types";
 import type { StateTaxAnnualParts, StateTaxBracket, StateTaxEstimateInput } from "./types";
 

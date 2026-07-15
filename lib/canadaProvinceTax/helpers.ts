@@ -1,4 +1,4 @@
-import { marginalBracketTaxAnnual } from "../payrollTaxApi";
+import { marginalBracketTaxAnnual } from "../taxMath";
 import type {
   CanadaProvinceBracket,
   CanadaProvinceTaxAnnualParts,

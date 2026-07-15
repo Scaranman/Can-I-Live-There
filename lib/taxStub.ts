@@ -1,11 +1,11 @@
 /**
- * DEMO payroll-tax approximation for MVP when PayrollTaxAPI is not wired.
+ * US payroll tax estimate composed from local federal + state/territory modules.
  * Federal: lib/federalTax.ts. State/DC/territories: lib/stateTax/<code>.ts.
  * Local remains a small heuristic / registry supplement.
- * Not tax advice. UI labels this explicitly.
+ * Not tax advice.
  */
 import { estimateFederalTaxesAnnual } from "./federalTax";
-import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
+import type { PayrollTaxAnnualEstimate } from "./taxMath";
 import { estimateStateTaxesAnnual, isUsTerritoryTaxCode } from "./stateTax";
 import type { FilingStatus } from "./types";
 

@@ -1,13 +1,13 @@
 /**
  * Local US federal employee-side tax estimates (ordinary income + FICA).
- * Rates live in data/federal-tax-rates.json — source of truth as we migrate off PayrollTaxAPI.
+ * Rates live in data/federal-tax-rates.json.
  *
  * Driven by the same inputs the app already collects for payroll estimates:
  * filingStatus, gross wages, and pretax deferrals (401k / HSA / FSA).
  * Not tax advice; excludes credits, itemizing, AMT, dependents, and multi-job FICA.
  */
 import rawRegistry from "@/data/federal-tax-rates.json";
-import { marginalBracketTaxAnnual } from "./payrollTaxApi";
+import { marginalBracketTaxAnnual } from "./taxMath";
 import type { FilingStatus } from "./types";
 
 export type FederalTaxBracket = { from: number; to?: number | null; rate: number };
@@ -89,7 +89,7 @@ export function socialSecurityTaxAnnual(grossAnnual: number): number {
 
 /**
  * Employee Medicare (1.45% of all wages) + Additional Medicare (0.9% of wages above
- * the filing-status threshold). Matches the PayrollTaxAPI estimator semantics.
+ * the filing-status threshold).
  */
 export function medicareTaxAnnual(grossAnnual: number, filing: FilingStatus): number {
   const gross = Math.max(0, grossAnnual);

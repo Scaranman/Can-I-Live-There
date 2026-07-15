@@ -89,7 +89,7 @@
       "unknown_residence_default": "non_resident",
       "api_credit_substrings": ["Philadelphia", "Phila"],
       "reference_url": "https://www.phila.gov/services/taxes-and-payments/wage-tax/",
-      "notes": "Population rank 6. Rates change periodically — confirm with the City of Philadelphia. Supplement = max(0, registry minus PayrollTaxAPI rows matching locality / substrings)."
+      "notes": "Population rank 6. Rates change periodically — confirm with the City of Philadelphia. When this entry matches, registry local tax replaces the stub locality amount."
     },
     {
       "id": "san_antonio_tx",

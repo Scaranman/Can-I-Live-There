@@ -4,7 +4,7 @@
  * Not tax advice; excludes most credits beyond the basic personal amount, abatement, and AMT.
  */
 import rawRegistry from "@/data/canada-federal-tax-rates.json";
-import { marginalBracketTaxAnnual } from "./payrollTaxApi";
+import { marginalBracketTaxAnnual } from "./taxMath";
 import type { FilingStatus } from "./types";
 
 export type CanadaFederalBracket = { from: number; to?: number | null; rate: number };

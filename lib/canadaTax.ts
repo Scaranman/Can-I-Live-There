@@ -1,11 +1,10 @@
 /**
- * Canada payroll estimates: local federal + provincial modules, parsers, and canatax mappers.
- * Optional Python bridge lives in canadaCanataxServer.ts (server-only).
+ * Canada payroll estimates: local federal + provincial modules and label parsers.
  * Not tax advice.
  */
 import { estimateCanadaFederalTaxesAnnual } from "./canadaFederalTax";
 import { estimateCanadaProvinceTaxesAnnual } from "./canadaProvinceTax";
-import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
+import type { PayrollTaxAnnualEstimate } from "./taxMath";
 
 const VALID_CA = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
 
@@ -58,48 +57,9 @@ export function guessProvinceFromLabel(label: string): string | undefined {
   return undefined;
 }
 
-export type CanataxAnnualResult = {
-  federal_tax: number;
-  provincial_tax: number;
-  cpp: number;
-  ei: number;
-  total_tax: number;
-  net_income: number;
-  qpp?: number;
-  qpip?: number;
-};
-
-export function mapCanataxToPayrollEstimate(
-  r: CanataxAnnualResult,
-  params: { grossAnnual: number; pretaxTotal: number },
-): PayrollTaxAnnualEstimate {
-  const gross = Math.max(0, params.grossAnnual);
-  const pretax = Math.min(gross, Math.max(0, params.pretaxTotal));
-  const federal = Math.max(0, r.federal_tax);
-  const provincial = Math.max(0, r.provincial_tax);
-  const cpp = Math.max(0, r.cpp ?? 0);
-  const ei = Math.max(0, r.ei ?? 0);
-  const qpp = Math.max(0, r.qpp ?? 0);
-  const qpip = Math.max(0, r.qpip ?? 0);
-  const cppLike = cpp + qpp;
-  const totalAnnual = federal + provincial + cppLike + ei + qpip;
-  const netAnnual = Math.max(0, gross - pretax - totalAnnual);
-  const effectiveRate = gross > 0 ? totalAnnual / gross : 0;
-
-  return {
-    netAnnual,
-    monthlyFederal: federal / 12,
-    monthlyState: provincial / 12,
-    monthlyLocal: qpip / 12,
-    monthlyFica: cppLike / 12,
-    monthlyMedicare: ei / 12,
-    effectiveRate,
-  };
-}
-
 /**
- * Local TS Canada payroll estimate (federal + province modules).
- * UI mapping matches canatax: federal / provincial / CPP|QPP / EI / QPIP→local.
+ * Local Canada payroll estimate (federal + province modules).
+ * UI mapping: federal / provincial / CPP|QPP / EI / QPIP→local.
  */
 export function estimateCanadaPayrollRough(
   grossAnnual: number,

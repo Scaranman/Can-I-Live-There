@@ -1,14 +1,9 @@
 /**
- * Supplemental local wage taxes absent from PayrollTaxAPI responses.
- * Source of truth: data/local-tax-rates.json (extend as needed).
+ * Local city wage-tax supplements from data/local-tax-rates.json.
+ * When a registry entry matches the work city, its local tax replaces the stub locality amount.
  */
 import rawRegistry from "@/data/local-tax-rates.json";
-import {
-  apiIncomeTaxAnnualForWorkLocality,
-  marginalBracketTaxAnnual,
-  type PayrollTaxAnnualEstimate,
-  type PayrollTaxLookupResponse,
-} from "./payrollTaxApi";
+import { marginalBracketTaxAnnual, type PayrollTaxAnnualEstimate } from "./taxMath";
 import type { FilingStatus } from "./types";
 import { guessLocalityFromLabel, guessStateFromLabel } from "./taxStub";
 
@@ -32,6 +27,7 @@ export type LocalTaxRegistryEntry = {
    * `marginal_brackets_non_resident_by_filing` is added later.
    */
   marginal_brackets_by_filing?: Partial<Record<FilingStatus, LocalTaxMarginalBracket[]>>;
+  /** @deprecated No longer used — kept for JSON compatibility with older registry entries. */
   api_credit_substrings?: string[];
   reference_url?: string;
   notes?: string;
@@ -68,7 +64,6 @@ export function applyLocalTaxRegistrySupplement(
     taxableAnnual: number;
     grossAnnual: number;
     filingStatus: FilingStatus;
-    lookup?: PayrollTaxLookupResponse;
   },
 ): PayrollTaxAnnualEstimate {
   const entry = matchingEntry(params.workCityLabel);
@@ -83,9 +78,6 @@ export function applyLocalTaxRegistrySupplement(
       : entry.basis === "taxable_wages"
         ? taxable
         : 0;
-
-  const workLoc = guessLocalityFromLabel(params.workCityLabel);
-  if (!workLoc) return tax;
 
   const resLoc = params.residenceLabel ? guessLocalityFromLabel(params.residenceLabel) : undefined;
   const resSt = params.residenceLabel ? guessStateFromLabel(params.residenceLabel) : undefined;
@@ -111,25 +103,18 @@ export function applyLocalTaxRegistrySupplement(
       ? marginalBracketTaxAnnual(basisAnnual, marginal)
       : basisAnnual * rate;
 
-  const apiCredit = apiIncomeTaxAnnualForWorkLocality(
-    params.lookup,
-    workLoc,
-    params.taxableAnnual,
-    params.grossAnnual,
-    entry.api_credit_substrings,
-  );
-
-  const deltaAnnual = Math.max(0, registryAnnual - apiCredit);
-  if (deltaAnnual <= 0) return tax;
+  const previousLocalAnnual = tax.monthlyLocal * 12;
+  const deltaAnnual = registryAnnual - previousLocalAnnual;
+  if (Math.abs(deltaAnnual) < 1e-9) return tax;
 
   const newNetAnnual = tax.netAnnual - deltaAnnual;
-  const newMonthlyLocal = tax.monthlyLocal + deltaAnnual / 12;
+  const newMonthlyLocal = registryAnnual / 12;
   const newEffectiveRate = gross > 0 ? tax.effectiveRate + deltaAnnual / gross : tax.effectiveRate;
 
   return {
     ...tax,
     netAnnual: Math.max(0, newNetAnnual),
     monthlyLocal: newMonthlyLocal,
-    effectiveRate: newEffectiveRate,
+    effectiveRate: Math.max(0, newEffectiveRate),
   };
 }
