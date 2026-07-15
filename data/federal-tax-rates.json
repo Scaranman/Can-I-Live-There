@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "tax_year": 2026,
+  "reference_urls": [
+    "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
+    "https://www.irs.gov/irb (Rev. Proc. 2025-32)",
+    "https://www.ssa.gov/oact/cola/cbb.html"
+  ],
+  "notes": "Employee-side US federal payroll estimates for app inputs: filingStatus, gross wages (salary+bonus+other), and pretax deferrals (traditional 401k, HSA, FSA). Ordinary income tax applies after pretax and the standard deduction (itemizing, credits, AMT, and dependents are out of scope). FICA Social Security and Medicare apply to gross wages; Additional Medicare uses filing-status thresholds on excess wages only.",
+  "standard_deduction": {
+    "single": 16100,
+    "married": 32200,
+    "hoh": 24150
+  },
+  "ordinary_income_brackets": {
+    "single": [
+      { "from": 0, "to": 12400, "rate": 0.1 },
+      { "from": 12400, "to": 50400, "rate": 0.12 },
+      { "from": 50400, "to": 105700, "rate": 0.22 },
+      { "from": 105700, "to": 201775, "rate": 0.24 },
+      { "from": 201775, "to": 256225, "rate": 0.32 },
+      { "from": 256225, "to": 640600, "rate": 0.35 },
+      { "from": 640600, "to": null, "rate": 0.37 }
+    ],
+    "married": [
+      { "from": 0, "to": 24800, "rate": 0.1 },
+      { "from": 24800, "to": 100800, "rate": 0.12 },
+      { "from": 100800, "to": 211400, "rate": 0.22 },
+      { "from": 211400, "to": 403550, "rate": 0.24 },
+      { "from": 403550, "to": 512450, "rate": 0.32 },
+      { "from": 512450, "to": 768700, "rate": 0.35 },
+      { "from": 768700, "to": null, "rate": 0.37 }
+    ],
+    "hoh": [
+      { "from": 0, "to": 17700, "rate": 0.1 },
+      { "from": 17700, "to": 67450, "rate": 0.12 },
+      { "from": 67450, "to": 105700, "rate": 0.22 },
+      { "from": 105700, "to": 201775, "rate": 0.24 },
+      { "from": 201775, "to": 256200, "rate": 0.32 },
+      { "from": 256200, "to": 640600, "rate": 0.35 },
+      { "from": 640600, "to": null, "rate": 0.37 }
+    ]
+  },
+  "social_security": {
+    "employee_rate": 0.062,
+    "wage_base": 184500
+  },
+  "medicare": {
+    "employee_rate": 0.0145,
+    "additional_rate": 0.009,
+    "additional_threshold": {
+      "single": 200000,
+      "married": 250000,
+      "hoh": 200000
+    }
+  }
+}

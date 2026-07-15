@@ -1,64 +1,11 @@
 /**
  * DEMO payroll-tax approximation for MVP when PayrollTaxAPI is not wired.
+ * Federal ordinary income + FICA come from lib/federalTax.ts; state/local remain stub heuristics.
  * Not tax advice. UI labels this explicitly.
  */
+import { estimateFederalTaxesAnnual } from "./federalTax";
 import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
 import type { FilingStatus } from "./types";
-
-const STANDARD_DEDUCTION: Record<FilingStatus, number> = {
-  single: 14600,
-  married: 29200,
-  hoh: 21900,
-};
-
-/** Rough marginal brackets — illustrative only (approx 2024-style USD). */
-function federalTaxAnnual(taxableIncome: number, filing: FilingStatus): number {
-  if (taxableIncome <= 0) return 0;
-  const brackets =
-    filing === "married"
-      ? [
-          [23200, 0.1],
-          [94300, 0.12],
-          [201050, 0.22],
-          [383900, 0.24],
-          [487450, 0.32],
-          [731200, 0.35],
-          [Infinity, 0.37],
-        ]
-      : filing === "hoh"
-        ? [
-            [16650, 0.1],
-            [63100, 0.12],
-            [100500, 0.22],
-            [191950, 0.24],
-            [243700, 0.32],
-            [609350, 0.35],
-            [Infinity, 0.37],
-          ]
-        : [
-            [11600, 0.1],
-            [47150, 0.12],
-            [100525, 0.22],
-            [191950, 0.24],
-            [243725, 0.32],
-            [609350, 0.35],
-            [Infinity, 0.37],
-          ];
-
-  let remaining = taxableIncome;
-  let prev = 0;
-  let tax = 0;
-  for (const [upper, rate] of brackets) {
-    const slice = Math.min(remaining, upper - prev);
-    if (slice > 0) {
-      tax += slice * rate;
-      remaining -= slice;
-    }
-    prev = upper;
-    if (remaining <= 0) break;
-  }
-  return tax;
-}
 
 /** Very rough effective state rate table by USPS state code (many omitted → default). */
 function stateRate(state?: string): number {
@@ -178,32 +125,28 @@ export function estimatePayrollTaxesAnnual(params: {
   fsaAnnual: number;
   cityLabel: string;
 }): PayrollTaxAnnualEstimate {
-  const ssWageBase = 168600;
-  const medicareAdditionalThreshold = 200000;
+  const federal = estimateFederalTaxesAnnual({
+    grossAnnual: params.grossAnnual,
+    filingStatus: params.filingStatus,
+    traditional401kAnnual: params.traditional401kAnnual,
+    hsaAnnual: params.hsaAnnual,
+    fsaAnnual: params.fsaAnnual,
+  });
 
   const gross = Math.max(0, params.grossAnnual);
-  const pretax = Math.min(
-    gross,
-    Math.max(0, params.traditional401kAnnual + params.hsaAnnual + params.fsaAnnual),
-  );
-  const wagesForIncomeTax = Math.max(0, gross - pretax);
-  const std = STANDARD_DEDUCTION[params.filingStatus];
-  const taxableOrdinary = Math.max(0, wagesForIncomeTax - std);
+  const pretax = Math.max(0, gross - federal.wagesForIncomeTax);
+  const wagesForIncomeTax = federal.wagesForIncomeTax;
 
-  const fedAnnual = federalTaxAnnual(taxableOrdinary, params.filingStatus);
   const st = guessStateFromLabel(params.cityLabel);
   const stateAnnual = wagesForIncomeTax * stateRate(st);
 
-  /** NYC-ish hint — ultra rough local piggyback */
+  /** NYC-ish hint — ultra rough local piggyback (registry supplement overrides when present). */
   const localAnnual =
     params.cityLabel.toLowerCase().includes("new york") ? wagesForIncomeTax * 0.0125 : 0;
 
-  const ssWages = Math.min(gross, ssWageBase);
-  const ss = ssWages * 0.062;
-  const medicareBase = gross * 0.0145;
-  const medicareExtra = gross > medicareAdditionalThreshold ? gross * 0.009 : 0;
-  const ficaAnnual = ss;
-  const medicareAnnual = medicareBase + medicareExtra;
+  const fedAnnual = federal.federalIncomeAnnual;
+  const ficaAnnual = federal.socialSecurityAnnual;
+  const medicareAnnual = federal.medicareAnnual;
 
   const totalAnnualTaxes = fedAnnual + stateAnnual + localAnnual + ficaAnnual + medicareAnnual;
   const netAnnual = Math.max(0, gross - pretax - totalAnnualTaxes);
