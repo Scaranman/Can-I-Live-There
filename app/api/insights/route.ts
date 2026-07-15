@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     "Write 6–10 plain-English bullets (leading dashes OK). No markdown headings.",
     "",
     "What TO write (this is the value of the panel):",
-    "1) City-specific cost-of-living color for EACH city in summary.cities / summary.rows:",
+    "1) City-specific cost-of-living color for EACH city in summary.cities:",
     "   Use general knowledge of those places (and US vs Canada when relevant) covering themes in colThemesToDiscuss —",
     "   groceries, dining, transit vs car, healthcare norms, childcare if plausible, seasonal utilities, lifestyle.",
     "   Compare cities when useful. Prefer qualitative / directional language (“typically”, “often”, “tends to”).",
