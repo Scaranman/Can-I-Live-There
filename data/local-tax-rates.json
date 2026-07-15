@@ -83,13 +83,13 @@
       "locality": "Philadelphia",
       "state": "PA",
       "description": "Philadelphia City Wage Tax (employee)",
-      "basis": "taxable_wages",
-      "resident_rate": 0.038399,
-      "non_resident_rate": 0.034399,
+      "basis": "gross_wages",
+      "resident_rate": 0.03735,
+      "non_resident_rate": 0.03425,
       "unknown_residence_default": "non_resident",
       "api_credit_substrings": ["Philadelphia", "Phila"],
       "reference_url": "https://www.phila.gov/services/taxes-and-payments/wage-tax/",
-      "notes": "Population rank 6. Rates change periodically — confirm with the City of Philadelphia. When this entry matches, registry local tax replaces the stub locality amount."
+      "notes": "Population rank 6. Rates as of July 1, 2026 (resident 3.735%, non-resident 3.425% per UPenn Payroll / City of Philadelphia). Wage tax applies to gross wages; confirm annually — fiscal-year mid-year changes are common."
     },
     {
       "id": "san_antonio_tx",
