@@ -1,34 +1,13 @@
 /**
  * DEMO payroll-tax approximation for MVP when PayrollTaxAPI is not wired.
- * Federal ordinary income + FICA come from lib/federalTax.ts; state/local remain stub heuristics.
+ * Federal: lib/federalTax.ts. State: lib/stateTax/<code>.ts (all 50 states).
+ * Local remains a small heuristic / registry supplement.
  * Not tax advice. UI labels this explicitly.
  */
 import { estimateFederalTaxesAnnual } from "./federalTax";
 import type { PayrollTaxAnnualEstimate } from "./payrollTaxApi";
+import { estimateStateTaxesAnnual } from "./stateTax";
 import type { FilingStatus } from "./types";
-
-/** Very rough effective state rate table by USPS state code (many omitted → default). */
-function stateRate(state?: string): number {
-  if (!state) return 0.04;
-  const s = state.toUpperCase();
-  const map: Record<string, number> = {
-    CA: 0.09,
-    NY: 0.077,
-    IL: 0.0495,
-    TX: 0,
-    FL: 0,
-    WA: 0,
-    CO: 0.044,
-    MA: 0.05,
-    NJ: 0.0637,
-    PA: 0.0307,
-    OH: 0.0399,
-    GA: 0.055,
-    NC: 0.0475,
-    MI: 0.0425,
-  };
-  return map[s] ?? 0.045;
-}
 
 /** Lowercase full state / territory names → USPS (incl. District of Columbia). */
 const STATE_NAME_TO_CODE: Record<string, string> = {
@@ -138,7 +117,15 @@ export function estimatePayrollTaxesAnnual(params: {
   const wagesForIncomeTax = federal.wagesForIncomeTax;
 
   const st = guessStateFromLabel(params.cityLabel);
-  const stateAnnual = wagesForIncomeTax * stateRate(st);
+  const state = estimateStateTaxesAnnual(st, {
+    grossAnnual: params.grossAnnual,
+    filingStatus: params.filingStatus,
+    traditional401kAnnual: params.traditional401kAnnual,
+    hsaAnnual: params.hsaAnnual,
+    fsaAnnual: params.fsaAnnual,
+    wagesForIncomeTax,
+  });
+  const stateAnnual = state.stateIncomeAnnual + state.stateExtrasAnnual;
 
   /** NYC-ish hint — ultra rough local piggyback (registry supplement overrides when present). */
   const localAnnual =
