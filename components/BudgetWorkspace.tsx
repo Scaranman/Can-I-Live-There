@@ -666,6 +666,7 @@ export function BudgetWorkspace() {
   const [insights, setInsights] = useState<string[]>([]);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsMode, setInsightsMode] = useState<"openai" | "deterministic" | "error" | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const [showCalculateErrors, setShowCalculateErrors] = useState(false);
   const resultsDashboardRef = useRef<HTMLElement | null>(null);
 
@@ -768,6 +769,8 @@ export function BudgetWorkspace() {
     setStatus("Calculating…");
     setInsights([]);
     setInsightsError(null);
+    setInsightsMode(null);
+    setInsightsLoading(false);
 
     const calcSnapshot = normalizeSnapshotBaseline({
       ...snapshot,
@@ -803,7 +806,15 @@ export function BudgetWorkspace() {
       });
     }
     setComputed(nextComputed);
+    setInsightsLoading(true);
     setStatus("Generating insights…");
+
+    // Show the results dashboard (including insights loading state) while GPT runs.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        resultsDashboardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 
     const summary = summarizeForInsights(snapshot, nextComputed);
     const det = deterministicInsights({
@@ -837,15 +848,10 @@ export function BudgetWorkspace() {
       setInsights(det);
       setInsightsError("Insights unavailable offline — showing deterministic notes.");
       setInsightsMode("error");
+    } finally {
+      setInsightsLoading(false);
+      setStatus(`Updated ${new Date().toLocaleTimeString()}`);
     }
-
-    setStatus(`Updated ${new Date().toLocaleTimeString()}`);
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        resultsDashboardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
   }
 
   function exportJsonClicked() {
@@ -867,6 +873,9 @@ export function BudgetWorkspace() {
         setDrafts(Object.fromEntries(normalized.cities.map((c) => [c.id, c.label])));
         setComputed(null);
         setInsights([]);
+        setInsightsError(null);
+        setInsightsMode(null);
+        setInsightsLoading(false);
         setStatus("Imported — calculate again to refresh numbers.");
       })
       .catch(() => {
@@ -883,6 +892,7 @@ export function BudgetWorkspace() {
     setInsights([]);
     setInsightsError(null);
     setInsightsMode(null);
+    setInsightsLoading(false);
     setStatus("Reset");
   }
 
@@ -1645,9 +1655,10 @@ export function BudgetWorkspace() {
                   : ""
               }`}
               aria-invalid={showCalculateErrors && calculateBlocked}
+              isDisabled={insightsLoading || status === "Calculating…"}
               onPress={() => void runCalculate()}
             >
-              Calculate
+              {insightsLoading ? "Generating insights…" : status === "Calculating…" ? "Calculating…" : "Calculate"}
             </Button>
             <p className="text-sm text-ink/70">
               Status: <span className="font-semibold text-ink">{status}</span>
@@ -1882,11 +1893,30 @@ export function BudgetWorkspace() {
             ))}
           </div>
 
-          <div className="rounded-2xl border-[3px] border-ink bg-pastel-lime/35 p-6 shadow-cut">
-            <h3 className="font-marker text-2xl text-ink">AI Insights</h3>
+          <div
+            className="rounded-2xl border-[3px] border-ink bg-pastel-mint/40 p-6 shadow-cut"
+            aria-busy={insightsLoading}
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h3 className="font-marker text-2xl text-ink">AI Insights</h3>
+              {insightsLoading ? (
+                <span className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white px-3 py-1 text-xs font-semibold text-ink shadow-cut">
+                  <span
+                    className="h-2.5 w-2.5 animate-pulse rounded-full bg-ink"
+                    aria-hidden
+                  />
+                  Writing city COL notes…
+                </span>
+              ) : null}
+            </div>
             <p className="mt-2 text-xs text-ink/60">
-              City-by-city cost-of-living color (beyond the table) plus takes on your named expense lines ·{" "}
-              {insightsMode === "openai" ? (
+              {insightsLoading ? (
+                <>
+                  Drafting city-by-city cost-of-living color and takes on your expense lines — this can take a few
+                  seconds.
+                </>
+              ) : insightsMode === "openai" ? (
                 <>
                   Written by OpenAI from your cities + expenses — qualitative, not a rehash of leftover/tax rows
                   (not financial advice).
@@ -1905,11 +1935,27 @@ export function BudgetWorkspace() {
                 <>Run Calculate to load insights.</>
               )}
             </p>
-            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-ink">
-              {insights.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
+            {insightsLoading ? (
+              <div className="mt-4 space-y-3" role="status">
+                <span className="sr-only">Loading AI insights</span>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="h-3.5 animate-pulse rounded-full bg-ink/15"
+                    style={{ width: `${92 - i * 10}%`, animationDelay: `${i * 120}ms` }}
+                  />
+                ))}
+                <p className="pt-1 text-sm text-ink/55">
+                  Numbers above are ready — insights continue loading in this panel.
+                </p>
+              </div>
+            ) : (
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-ink">
+                {insights.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       ) : null}
